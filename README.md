@@ -10,6 +10,8 @@ Para Docker, copiar `.env.example` a `.env` y completar credenciales locales pro
 
 La migración inicial conserva las filas del prototipo y convierte tablas, campos y estados a inglés. Respaldar cualquier base existente antes de migrarla. Un esquema parcial o mezclado se rechaza.
 
+La migración `0003` normaliza fichas, fuentes, categorías, colecciones, recursos y autorizaciones. Las consultas públicas usan vistas de vigencia; las claves existentes se conservan. Los datos legados sin autor o acta conocida mantienen esos campos vacíos.
+
 `musiyo import museum-test-data` prepara `museum-main`: seis salas y las 16 anclas de Unity, sin piezas culturales. El prototipo `recorrido-prueba` sigue disponible. Los recorridos retirados no se entregan por API.
 
 ## Comprobaciones

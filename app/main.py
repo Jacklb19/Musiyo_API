@@ -4,51 +4,21 @@ from typing import Annotated, Literal
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .contracts import (
-    Credit,
     Element,
-    ElementSummary,
-    Guide,
     Health,
-    Point,
     Problem,
-    Restriction,
-    Room,
-    Source,
-    TextBlock,
     Tour,
-    TourMetadata,
 )
 from .db import (
-    ElementRecord,
-    PointElementRecord,
-    PointRecord,
-    ResourceRecord,
-    RoomRecord,
-    TourRecord,
-    is_public_element,
-    is_public_resource,
     make_session_factory,
     storage_root,
     utc_now,
 )
-
-
-def public_element(element: ElementRecord) -> Element:
-    return Element(
-        slug=element.id,
-        title=element.title,
-        description=element.description,
-        blocks=[TextBlock(id="legacy-interpretation", kind="interpretation", text=element.interpretation,
-                         source_id="legacy-source" if element.sources else None)] if element.interpretation else [],
-        credits=[Credit(name=element.credits)] if element.credits else [],
-        sources=[Source(id="legacy-source", kind="other", reference=element.sources)] if element.sources else [],
-        restrictions=[Restriction(kind="other", description=element.restrictions)] if element.restrictions else [],
-    )
+from .public_repository import PublicRepository
 
 
 def create_app(
@@ -91,33 +61,22 @@ def create_app(
 
     @app.get("/api/v1/elements", response_model=list[Element])
     def list_elements(db: Db):
-        current_time = now()
-        return [
-            public_element(element)
-            for element in db.scalars(select(ElementRecord).order_by(ElementRecord.id))
-            if is_public_element(element, current_time)
-        ]
+        return PublicRepository(db, now).elements()
 
     @app.get("/api/v1/elements/{element_id}", response_model=Element)
     def get_element(element_id: str, db: Db):
-        element = db.get(ElementRecord, element_id)
-        if element is None or not is_public_element(element, now()):
+        element = PublicRepository(db, now).element(element_id)
+        if element is None:
             raise HTTPException(404, "Contenido no disponible")
-        return public_element(element)
+        return element
 
     @app.get("/api/v1/elements/{element_id}/resources/{resource_id}")
     def get_resource(element_id: str, resource_id: str, db: Db):
-        current_time = now()
-        element = db.get(ElementRecord, element_id)
-        resource = db.get(ResourceRecord, resource_id)
-        if (
-            element is None or not is_public_element(element, current_time)
-            or resource is None or resource.element_id != element_id
-            or not is_public_resource(resource, current_time)
-        ):
+        resource = PublicRepository(db, now).resource(element_id, resource_id)
+        if resource is None:
             raise HTTPException(404, "Recurso no disponible")
         try:
-            path = (storage / resource.private_path).resolve()
+            path = (storage / resource["private_path"]).resolve()
             path.relative_to(storage)
         except ValueError:
             raise HTTPException(404, "Recurso no disponible")
@@ -125,8 +84,8 @@ def create_app(
             raise HTTPException(404, "Recurso no disponible")
         return FileResponse(
             path,
-            media_type=resource.mime,
-            filename=resource.name,
+            media_type=resource["mime"],
+            filename=resource["name"],
             content_disposition_type="inline",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
@@ -135,53 +94,10 @@ def create_app(
     def get_tour(tour_id: str, db: Db, schema_version: int = 1):
         if schema_version != 1:
             raise HTTPException(409, "Versión de contrato incompatible")
-        tour = db.get(TourRecord, tour_id)
-        if tour is None or not tour.published:
+        tour = PublicRepository(db, now).tour(tour_id)
+        if tour is None:
             raise HTTPException(404, "Recorrido no disponible")
-        rooms = list(db.scalars(
-            select(RoomRecord).where(RoomRecord.tour_id == tour_id).order_by(RoomRecord.order, RoomRecord.id)
-        ))
-        if not rooms:
-            raise HTTPException(404, "Recorrido no disponible")
-        current_time = now()
-        visible_elements = {
-            element.id: ElementSummary(slug=element.id, title=element.title) for element in db.scalars(select(ElementRecord))
-            if is_public_element(element, current_time)
-        }
-        result = []
-        for room in rooms:
-            points = list(db.scalars(
-                select(PointRecord).where(PointRecord.room_id == room.id).order_by(PointRecord.order, PointRecord.id)
-            ))
-            result.append(Room(
-                key=room.id,
-                name=room.name or room.id,
-                order=room.order,
-                short_description=room.short_description,
-                points=[
-                    Point(
-                        key=point.id,
-                        name=point.name or point.id,
-                        order=point.order,
-                        activation=point.activation,
-                        elements=[
-                            visible_elements[link.element_id] for link in db.scalars(
-                                select(PointElementRecord)
-                                .where(PointElementRecord.point_id == point.id)
-                                .order_by(PointElementRecord.order, PointElementRecord.element_id)
-                            )
-                            if link.element_id in visible_elements
-                        ],
-                    )
-                    for point in points
-                ],
-            ))
-        guide_key, guide_name, guide_room = tour.guide_key, tour.guide_name, tour.guide_room_key
-        guide = Guide(key=guide_key, name=guide_name, room_key=guide_room, available=tour.guide_available) \
-            if guide_key and guide_name and guide_room and guide_room in {room.key for room in result} else None
-        return Tour(schema_version=1,
-                    tour=TourMetadata(key=tour.id, name=tour.name, revision=tour.revision),
-                    rooms=result, guide=guide)
+        return tour
 
     return app
 

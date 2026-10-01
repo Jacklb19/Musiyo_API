@@ -6,13 +6,16 @@ from pathlib import Path
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
     Text,
     create_engine,
+    event,
 )
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -51,7 +54,7 @@ class ResourceRecord(Base):
     __tablename__ = "resources"
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
-    element_id: Mapped[str] = mapped_column(ForeignKey("elements.id"))
+    element_id: Mapped[str | None] = mapped_column(ForeignKey("elements.id"))
     name: Mapped[str] = mapped_column(String(250))
     mime: Mapped[str] = mapped_column(String(100))
     private_path: Mapped[str] = mapped_column(Text)
@@ -59,7 +62,23 @@ class ResourceRecord(Base):
     authorized_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     authorized_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    element: Mapped[ElementRecord] = relationship(back_populates="resources")
+    kind: Mapped[str | None] = mapped_column(String(30))
+    profile: Mapped[str] = mapped_column(String(20), default="general")
+    room_id: Mapped[str | None] = mapped_column(ForeignKey("rooms.id"))
+    point_id: Mapped[str | None] = mapped_column(ForeignKey("points.id"))
+    byte_count: Mapped[int | None] = mapped_column(BigInteger)
+    sha256: Mapped[str | None] = mapped_column(String(64))
+    alternative_text: Mapped[str | None] = mapped_column(Text)
+    transcription: Mapped[str | None] = mapped_column(Text)
+    duration_seconds: Mapped[float | None] = mapped_column(Float)
+    credit: Mapped[str | None] = mapped_column(Text)
+    provenance: Mapped[str | None] = mapped_column(Text)
+    accessibility_adaptation: Mapped[str | None] = mapped_column(Text)
+    paradata: Mapped[dict | None] = mapped_column(JSON)
+    technical_metadata: Mapped[dict | None] = mapped_column("metadata", JSON)
+    variant_of: Mapped[str | None] = mapped_column(ForeignKey("resources.id"))
+    subtitles_resource_id: Mapped[str | None] = mapped_column(ForeignKey("resources.id"))
+    element: Mapped[ElementRecord | None] = relationship(back_populates="resources")
 
 
 class TourRecord(Base):
@@ -141,6 +160,10 @@ def make_session_factory(database_url: str | None = None):
     url = database_url or os.getenv("MUSIYO_DATABASE_URL") or "sqlite:///./musiyo.db"
     kwargs = {"connect_args": {"check_same_thread": False}} if url.startswith("sqlite:") else {}
     engine = create_engine(url, **kwargs)
+    if engine.dialect.name == "sqlite":
+        @event.listens_for(engine, "connect")
+        def enforce_foreign_keys(connection, record):
+            connection.execute("PRAGMA foreign_keys = ON")
     return sessionmaker(engine, expire_on_commit=False)
 
 

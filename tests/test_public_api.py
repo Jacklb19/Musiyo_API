@@ -1,29 +1,28 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
 
+from app.content_tables import CONTENT
 from app.db import (
-    Base,
     ElementRecord,
     PointElementRecord,
     PointRecord,
     ResourceRecord,
     RoomRecord,
     TourRecord,
+    make_session_factory,
 )
 from app.main import create_app
+from app.migrations import upgrade_database
 
 NOW = datetime(2026, 9, 27, 12, tzinfo=timezone.utc)
 
 
 def client_with_data(tmp_path):
-    engine = create_engine(
-        f"sqlite:///{tmp_path / 'test.db'}", connect_args={"check_same_thread": False}
-    )
-    Base.metadata.create_all(engine)
-    factory = sessionmaker(engine, expire_on_commit=False)
+    url = f"sqlite:///{tmp_path / 'test.db'}"
+    upgrade_database(url)
+    factory = make_session_factory(url)
     with factory() as db:
         db.add_all([
             TourRecord(id="recorrido-prueba", name="recorrido-prueba", published=True),
@@ -89,6 +88,15 @@ def client_with_data(tmp_path):
             ),
         ])
         db.commit()
+    with factory.begin() as db:
+        for element in db.scalars(select(ElementRecord)):
+            if element.authorized_from is not None:
+                db.execute(CONTENT["authorizations"].insert().values(element_id=element.id,
+                    approved_culturally=element.approval_status == "approved" and element.approved_at is not None,
+                    authorized_from=element.authorized_from, authorized_until=element.authorized_until, revoked_at=element.revoked_at))
+        for resource in db.scalars(select(ResourceRecord)):
+            db.execute(CONTENT["authorizations"].insert().values(resource_id=resource.id,
+                approved_culturally=resource.approved, authorized_from=resource.authorized_from))
     return TestClient(create_app(factory, now=lambda: NOW, private_storage=storage))
 
 
