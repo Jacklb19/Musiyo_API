@@ -10,21 +10,21 @@ from sqlalchemy.orm import Session, sessionmaker
 from .contracts import Credit, Element, ElementSummary, Health, Point, Problem, Restriction, Room, Source, TextBlock, Tour, TourMetadata
 
 from .db import (
-    Elemento, Punto, PuntoElemento, Recurso, Sala, elemento_publico,
-    make_session_factory, recurso_publico, storage_root, utc_now,
+    ElementRecord, PointRecord, PointElementRecord, ResourceRecord, RoomRecord, is_public_element,
+    make_session_factory, is_public_resource, storage_root, utc_now,
 )
 
 
-def public_element(element: Elemento) -> Element:
+def public_element(element: ElementRecord) -> Element:
     return Element(
         slug=element.id,
-        title=element.titulo,
-        description=element.descripcion,
-        blocks=[TextBlock(id="legacy-interpretation", kind="interpretation", text=element.interpretacion,
-                         source_id="legacy-source" if element.fuentes else None)] if element.interpretacion else [],
-        credits=[Credit(name=element.creditos)] if element.creditos else [],
-        sources=[Source(id="legacy-source", kind="other", reference=element.fuentes)] if element.fuentes else [],
-        restrictions=[Restriction(kind="other", description=element.restricciones)] if element.restricciones else [],
+        title=element.title,
+        description=element.description,
+        blocks=[TextBlock(id="legacy-interpretation", kind="interpretation", text=element.interpretation,
+                         source_id="legacy-source" if element.sources else None)] if element.interpretation else [],
+        credits=[Credit(name=element.credits)] if element.credits else [],
+        sources=[Source(id="legacy-source", kind="other", reference=element.sources)] if element.sources else [],
+        restrictions=[Restriction(kind="other", description=element.restrictions)] if element.restrictions else [],
     )
 
 
@@ -68,30 +68,30 @@ def create_app(
         current_time = now()
         return [
             public_element(element)
-            for element in db.scalars(select(Elemento).order_by(Elemento.id))
-            if elemento_publico(element, current_time)
+            for element in db.scalars(select(ElementRecord).order_by(ElementRecord.id))
+            if is_public_element(element, current_time)
         ]
 
     @app.get("/api/v1/elements/{element_id}", response_model=Element)
     def get_element(element_id: str, db: Db):
-        element = db.get(Elemento, element_id)
-        if element is None or not elemento_publico(element, now()):
+        element = db.get(ElementRecord, element_id)
+        if element is None or not is_public_element(element, now()):
             raise HTTPException(404, "Contenido no disponible")
         return public_element(element)
 
     @app.get("/api/v1/elements/{element_id}/resources/{resource_id}")
     def get_resource(element_id: str, resource_id: str, db: Db):
         current_time = now()
-        element = db.get(Elemento, element_id)
-        resource = db.get(Recurso, resource_id)
+        element = db.get(ElementRecord, element_id)
+        resource = db.get(ResourceRecord, resource_id)
         if (
-            element is None or not elemento_publico(element, current_time)
-            or resource is None or resource.elemento_id != element_id
-            or not recurso_publico(resource, current_time)
+            element is None or not is_public_element(element, current_time)
+            or resource is None or resource.element_id != element_id
+            or not is_public_resource(resource, current_time)
         ):
             raise HTTPException(404, "Recurso no disponible")
         try:
-            path = (storage / resource.ruta_privada).resolve()
+            path = (storage / resource.private_path).resolve()
             path.relative_to(storage)
         except ValueError:
             raise HTTPException(404, "Recurso no disponible")
@@ -99,8 +99,8 @@ def create_app(
             raise HTTPException(404, "Recurso no disponible")
         return FileResponse(
             path,
-            media_type=resource.tipo_mime,
-            filename=resource.nombre,
+            media_type=resource.mime,
+            filename=resource.name,
             content_disposition_type="inline",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
@@ -110,37 +110,37 @@ def create_app(
         if schema_version != 1:
             raise HTTPException(409, "Versión de contrato incompatible")
         rooms = list(db.scalars(
-            select(Sala).where(Sala.recorrido_id == tour_id).order_by(Sala.orden, Sala.id)
+            select(RoomRecord).where(RoomRecord.tour_id == tour_id).order_by(RoomRecord.order, RoomRecord.id)
         ))
         if not rooms:
             raise HTTPException(404, "Recorrido no disponible")
         current_time = now()
         visible_elements = {
-            element.id: ElementSummary(slug=element.id, title=element.titulo) for element in db.scalars(select(Elemento))
-            if elemento_publico(element, current_time)
+            element.id: ElementSummary(slug=element.id, title=element.title) for element in db.scalars(select(ElementRecord))
+            if is_public_element(element, current_time)
         }
         result = []
         for room in rooms:
             points = list(db.scalars(
-                select(Punto).where(Punto.sala_id == room.id).order_by(Punto.orden, Punto.id)
+                select(PointRecord).where(PointRecord.room_id == room.id).order_by(PointRecord.order, PointRecord.id)
             ))
             result.append(Room(
                 key=room.id,
                 name=room.id,
-                order=room.orden,
+                order=room.order,
                 points=[
                     Point(
                         key=point.id,
                         name=point.id,
-                        order=point.orden,
+                        order=point.order,
                         activation=["keyboard"],
                         elements=[
-                            visible_elements[link.elemento_id] for link in db.scalars(
-                                select(PuntoElemento)
-                                .where(PuntoElemento.punto_id == point.id)
-                                .order_by(PuntoElemento.orden, PuntoElemento.elemento_id)
+                            visible_elements[link.element_id] for link in db.scalars(
+                                select(PointElementRecord)
+                                .where(PointElementRecord.point_id == point.id)
+                                .order_by(PointElementRecord.order, PointElementRecord.element_id)
                             )
-                            if link.elemento_id in visible_elements
+                            if link.element_id in visible_elements
                         ],
                     )
                     for point in points

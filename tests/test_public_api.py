@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.db import Base, Elemento, Punto, PuntoElemento, Recurso, Sala
+from app.db import Base, ElementRecord, PointRecord, PointElementRecord, ResourceRecord, RoomRecord
 from app.main import create_app
 
 
@@ -19,39 +19,39 @@ def client_with_data(tmp_path):
     factory = sessionmaker(engine, expire_on_commit=False)
     with factory() as db:
         db.add_all([
-            Elemento(
-                id="visible", titulo="Elemento sintético", descripcion="Solo prueba",
-                interpretacion="Interpretación sintética", fuentes="Fuente sintética", creditos="Autor de prueba",
-                restricciones="Uso de prueba", estado_aprobacion="aprobado", aprobado_en=NOW,
-                autorizado_desde=NOW - timedelta(days=1),
+            ElementRecord(
+                id="visible", title="ElementRecord sintético", description="Solo prueba",
+                interpretation="Interpretación sintética", sources="Fuente sintética", credits="Autor de prueba",
+                restrictions="Uso de prueba", approval_status="approved", approved_at=NOW,
+                authorized_from=NOW - timedelta(days=1),
             ),
-            Elemento(
-                id="borrador", titulo="Borrador", descripcion="No publicar",
-                interpretacion="", estado_aprobacion="borrador", aprobado_en=None,
-                autorizado_desde=NOW - timedelta(days=1),
+            ElementRecord(
+                id="draft", title="Borrador", description="No publicar",
+                interpretation="", approval_status="draft", approved_at=None,
+                authorized_from=NOW - timedelta(days=1),
             ),
-            Elemento(
-                id="vencido", titulo="Vencido", descripcion="No publicar",
-                interpretacion="", estado_aprobacion="aprobado", aprobado_en=NOW,
-                autorizado_desde=NOW - timedelta(days=2),
-                autorizado_hasta=NOW - timedelta(days=1),
+            ElementRecord(
+                id="vencido", title="Vencido", description="No publicar",
+                interpretation="", approval_status="approved", approved_at=NOW,
+                authorized_from=NOW - timedelta(days=2),
+                authorized_until=NOW - timedelta(days=1),
             ),
-            Elemento(
-                id="revocado", titulo="Revocado", descripcion="No publicar",
-                interpretacion="", estado_aprobacion="aprobado", aprobado_en=NOW,
-                autorizado_desde=NOW - timedelta(days=1), revocado_en=NOW,
+            ElementRecord(
+                id="revoked", title="Revocado", description="No publicar",
+                interpretation="", approval_status="approved", approved_at=NOW,
+                authorized_from=NOW - timedelta(days=1), revoked_at=NOW,
             ),
-            Elemento(
-                id="sin-autorizacion", titulo="Sin autorización",
-                descripcion="No publicar", interpretacion="",
-                estado_aprobacion="aprobado", aprobado_en=NOW,
+            ElementRecord(
+                id="sin-autorizacion", title="Sin autorización",
+                description="No publicar", interpretation="",
+                approval_status="approved", approved_at=NOW,
             ),
-            Sala(id="sala-prueba", recorrido_id="recorrido-prueba", orden=0),
-            Punto(id="punto-01", sala_id="sala-prueba", orden=0),
-            Punto(id="punto-02", sala_id="sala-prueba", orden=1),
-            PuntoElemento(punto_id="punto-01", elemento_id="visible", orden=0),
-            PuntoElemento(punto_id="punto-01", elemento_id="borrador", orden=1),
-            PuntoElemento(punto_id="punto-02", elemento_id="visible", orden=0),
+            RoomRecord(id="room-prueba", tour_id="recorrido-prueba", order=0),
+            PointRecord(id="point-01", room_id="room-prueba", order=0),
+            PointRecord(id="point-02", room_id="room-prueba", order=1),
+            PointElementRecord(point_id="point-01", element_id="visible", order=0),
+            PointElementRecord(point_id="point-01", element_id="draft", order=1),
+            PointElementRecord(point_id="point-02", element_id="visible", order=0),
         ])
         db.commit()
     storage = tmp_path / "storage"
@@ -59,25 +59,25 @@ def client_with_data(tmp_path):
     (storage / "archivo.txt").write_text("contenido sintético", encoding="utf-8")
     with factory() as db:
         db.add_all([
-            Recurso(
-                id="autorizado", elemento_id="visible", nombre="archivo.txt",
-                tipo_mime="text/plain", ruta_privada="archivo.txt", aprobado=True,
-                autorizado_desde=NOW - timedelta(days=1),
+            ResourceRecord(
+                id="autorizado", element_id="visible", name="archivo.txt",
+                mime="text/plain", private_path="archivo.txt", approved=True,
+                authorized_from=NOW - timedelta(days=1),
             ),
-            Recurso(
-                id="sin-aprobar", elemento_id="visible", nombre="archivo.txt",
-                tipo_mime="text/plain", ruta_privada="archivo.txt", aprobado=False,
-                autorizado_desde=NOW - timedelta(days=1),
+            ResourceRecord(
+                id="sin-aprobar", element_id="visible", name="archivo.txt",
+                mime="text/plain", private_path="archivo.txt", approved=False,
+                authorized_from=NOW - timedelta(days=1),
             ),
-            Recurso(
-                id="de-borrador", elemento_id="borrador", nombre="archivo.txt",
-                tipo_mime="text/plain", ruta_privada="archivo.txt", aprobado=True,
-                autorizado_desde=NOW - timedelta(days=1),
+            ResourceRecord(
+                id="de-draft", element_id="draft", name="archivo.txt",
+                mime="text/plain", private_path="archivo.txt", approved=True,
+                authorized_from=NOW - timedelta(days=1),
             ),
-            Recurso(
-                id="fuera", elemento_id="visible", nombre="archivo.txt",
-                tipo_mime="text/plain", ruta_privada="../archivo.txt", aprobado=True,
-                autorizado_desde=NOW - timedelta(days=1),
+            ResourceRecord(
+                id="fuera", element_id="visible", name="archivo.txt",
+                mime="text/plain", private_path="../archivo.txt", approved=True,
+                authorized_from=NOW - timedelta(days=1),
             ),
         ])
         db.commit()
@@ -89,9 +89,9 @@ def test_publication_fail_closed(tmp_path):
     listing = client.get("/api/v1/elements")
     assert listing.status_code == 200
     assert [item["slug"] for item in listing.json()] == ["visible"]
-    for denied in ("borrador", "vencido", "revocado", "sin-autorizacion"):
+    for denied in ("draft", "vencido", "revoked", "sin-autorizacion"):
         assert client.get(f"/api/v1/elements/{denied}").status_code == 404
-    assert client.get("/api/v1/elements/visible").json()["title"] == "Elemento sintético"
+    assert client.get("/api/v1/elements/visible").json()["title"] == "ElementRecord sintético"
 
 
 def test_legacy_adapter_preserves_text_and_source_links(tmp_path):
@@ -115,8 +115,8 @@ def test_contract_filters_denied_elements_and_preserves_repetition(tmp_path):
     contract = Tour.model_validate_json(response.content)
     assert contract.schema_version == 1
     assert contract.tour.key == "recorrido-prueba"
-    assert contract.rooms[0].key == "sala-prueba"
-    assert [point.key for point in contract.rooms[0].points] == ["punto-01", "punto-02"]
+    assert contract.rooms[0].key == "room-prueba"
+    assert [point.key for point in contract.rooms[0].points] == ["point-01", "point-02"]
     assert [[item.slug for item in point.elements] for point in contract.rooms[0].points] == [["visible"], ["visible"]]
     assert contract.guide is None
     assert client.get("/api/v1/tours/inexistente").status_code == 404
@@ -136,8 +136,8 @@ def test_resources_require_both_authorizations_and_safe_storage(tmp_path):
     assert allowed.headers["cache-control"] == "private, no-store"
     for element, resource in [
         ("visible", "sin-aprobar"),
-        ("borrador", "de-borrador"),
+        ("draft", "de-draft"),
         ("visible", "fuera"),
-        ("visible", "de-borrador"),
+        ("visible", "de-draft"),
     ]:
         assert client.get(f"{base}/{element}/resources/{resource}").status_code == 404
