@@ -1,0 +1,8 @@
+*
+!Dockerfile
+!pyproject.toml
+!README.md
+!app/**
+!migrations/**
+!fixtures/**
+!alembic.ini
