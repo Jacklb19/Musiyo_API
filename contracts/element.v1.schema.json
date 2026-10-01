@@ -1,0 +1,506 @@
+{
+  "$defs": {
+    "Community": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "people": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "People",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "people"
+      ],
+      "title": "Community",
+      "type": "object"
+    },
+    "Credit": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Credit",
+      "type": "object"
+    },
+    "LastModified": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date-time",
+          "title": "Date",
+          "type": "string"
+        },
+        "author": {
+          "title": "Author",
+          "type": "string"
+        }
+      },
+      "required": [
+        "date",
+        "author"
+      ],
+      "title": "LastModified",
+      "type": "object"
+    },
+    "NamedTerm": {
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Slug",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "name"
+      ],
+      "title": "NamedTerm",
+      "type": "object"
+    },
+    "Resource": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "model_3d",
+            "image",
+            "audio",
+            "video",
+            "narration",
+            "subtitles"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "mime": {
+          "title": "Mime",
+          "type": "string"
+        },
+        "byte_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Byte Count"
+        },
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Seconds"
+        },
+        "alternative_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alternative Text"
+        },
+        "credit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credit"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provenance"
+        },
+        "variants": {
+          "items": {
+            "$ref": "#/$defs/ResourceVariant"
+          },
+          "title": "Variants",
+          "type": "array"
+        },
+        "transcription": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transcription"
+        },
+        "subtitles_resource_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subtitles Resource Id"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "mime"
+      ],
+      "title": "Resource",
+      "type": "object"
+    },
+    "ResourceVariant": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "profile": {
+          "enum": [
+            "web",
+            "quest"
+          ],
+          "title": "Profile",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "profile"
+      ],
+      "title": "ResourceVariant",
+      "type": "object"
+    },
+    "Restriction": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "no_download",
+            "no_reuse",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "description"
+      ],
+      "title": "Restriction",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "publication",
+            "interview",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "reference": {
+          "title": "Reference",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "reference"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "TextBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "documented_fact",
+            "testimony",
+            "interpretation"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "attribution": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attribution"
+        },
+        "context": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "text"
+      ],
+      "title": "TextBlock",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "slug": {
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Slug",
+      "type": "string"
+    },
+    "language": {
+      "const": "es",
+      "default": "es",
+      "title": "Language",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "community": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Community"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "category": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/NamedTerm"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "collections": {
+      "items": {
+        "$ref": "#/$defs/NamedTerm"
+      },
+      "title": "Collections",
+      "type": "array"
+    },
+    "technique": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Technique"
+    },
+    "materials": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Materials",
+      "type": "array"
+    },
+    "blocks": {
+      "items": {
+        "$ref": "#/$defs/TextBlock"
+      },
+      "title": "Blocks",
+      "type": "array"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "credits": {
+      "items": {
+        "$ref": "#/$defs/Credit"
+      },
+      "title": "Credits",
+      "type": "array"
+    },
+    "restrictions": {
+      "items": {
+        "$ref": "#/$defs/Restriction"
+      },
+      "title": "Restrictions",
+      "type": "array"
+    },
+    "resources": {
+      "items": {
+        "$ref": "#/$defs/Resource"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "last_modified": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LastModified"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "slug",
+    "title",
+    "description"
+  ],
+  "title": "Element",
+  "type": "object"
+}

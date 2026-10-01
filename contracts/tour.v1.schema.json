@@ -1,0 +1,269 @@
+{
+  "$defs": {
+    "ElementSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Slug",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "community": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Community"
+        },
+        "thumbnail_resource_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thumbnail Resource Id"
+        },
+        "has_3d_model": {
+          "default": false,
+          "title": "Has 3D Model",
+          "type": "boolean"
+        },
+        "has_narration": {
+          "default": false,
+          "title": "Has Narration",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "slug",
+        "title"
+      ],
+      "title": "ElementSummary",
+      "type": "object"
+    },
+    "Guide": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Key",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "room_key": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Room Key",
+          "type": "string"
+        },
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "room_key",
+        "available"
+      ],
+      "title": "Guide",
+      "type": "object"
+    },
+    "Point": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Key",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "order": {
+          "minimum": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "activation": {
+          "items": {
+            "enum": [
+              "proximity",
+              "gaze",
+              "keyboard"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Activation",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "elements": {
+          "items": {
+            "$ref": "#/$defs/ElementSummary"
+          },
+          "title": "Elements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "order",
+        "activation",
+        "elements"
+      ],
+      "title": "Point",
+      "type": "object"
+    },
+    "Room": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Key",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "order": {
+          "minimum": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "short_description": {
+          "default": "",
+          "title": "Short Description",
+          "type": "string"
+        },
+        "ambient_audio_resource_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ambient Audio Resource Id"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/Point"
+          },
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "order",
+        "points"
+      ],
+      "title": "Room",
+      "type": "object"
+    },
+    "TourMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Key",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revision"
+        }
+      },
+      "required": [
+        "key",
+        "name"
+      ],
+      "title": "TourMetadata",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "tour": {
+      "$ref": "#/$defs/TourMetadata"
+    },
+    "rooms": {
+      "items": {
+        "$ref": "#/$defs/Room"
+      },
+      "minItems": 1,
+      "title": "Rooms",
+      "type": "array"
+    },
+    "guide": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Guide"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "schema_version",
+    "tour",
+    "rooms"
+  ],
+  "title": "Tour",
+  "type": "object"
+}

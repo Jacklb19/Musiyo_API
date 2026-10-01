@@ -1,0 +1,1126 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Musiyo API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/elements": {
+      "get": {
+        "summary": "List Elements",
+        "operationId": "list_elements_api_v1_elements_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Element"
+                  },
+                  "type": "array",
+                  "title": "Response List Elements Api V1 Elements Get"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/elements/{element_id}": {
+      "get": {
+        "summary": "Get Element",
+        "operationId": "get_element_api_v1_elements__element_id__get",
+        "parameters": [
+          {
+            "name": "element_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Element Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Element"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/elements/{element_id}/resources/{resource_id}": {
+      "get": {
+        "summary": "Get Resource",
+        "operationId": "get_resource_api_v1_elements__element_id__resources__resource_id__get",
+        "parameters": [
+          {
+            "name": "element_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Element Id"
+            }
+          },
+          {
+            "name": "resource_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Resource Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/tours/{tour_id}": {
+      "get": {
+        "summary": "Get Tour",
+        "operationId": "get_tour_api_v1_tours__tour_id__get",
+        "parameters": [
+          {
+            "name": "tour_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tour Id"
+            }
+          },
+          {
+            "name": "schema_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Schema Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tour"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Community": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "people": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "People"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "people"
+        ],
+        "title": "Community"
+      },
+      "Credit": {
+        "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "Credit"
+      },
+      "Element": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Slug"
+          },
+          "language": {
+            "type": "string",
+            "const": "es",
+            "title": "Language",
+            "default": "es"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "community": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Community"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NamedTerm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "collections": {
+            "items": {
+              "$ref": "#/components/schemas/NamedTerm"
+            },
+            "type": "array",
+            "title": "Collections"
+          },
+          "technique": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Technique"
+          },
+          "materials": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Materials"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/TextBlock"
+            },
+            "type": "array",
+            "title": "Blocks"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "credits": {
+            "items": {
+              "$ref": "#/components/schemas/Credit"
+            },
+            "type": "array",
+            "title": "Credits"
+          },
+          "restrictions": {
+            "items": {
+              "$ref": "#/components/schemas/Restriction"
+            },
+            "type": "array",
+            "title": "Restrictions"
+          },
+          "resources": {
+            "items": {
+              "$ref": "#/components/schemas/Resource"
+            },
+            "type": "array",
+            "title": "Resources"
+          },
+          "last_modified": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastModified"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "slug",
+          "title",
+          "description"
+        ],
+        "title": "Element"
+      },
+      "ElementSummary": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Slug"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "community": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community"
+          },
+          "thumbnail_resource_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^\\S+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Resource Id"
+          },
+          "has_3d_model": {
+            "type": "boolean",
+            "title": "Has 3D Model",
+            "default": false
+          },
+          "has_narration": {
+            "type": "boolean",
+            "title": "Has Narration",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "slug",
+          "title"
+        ],
+        "title": "ElementSummary"
+      },
+      "Guide": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "room_key": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Room Key"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "room_key",
+          "available"
+        ],
+        "title": "Guide"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "Health"
+      },
+      "LastModified": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Date"
+          },
+          "author": {
+            "type": "string",
+            "title": "Author"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "author"
+        ],
+        "title": "LastModified"
+      },
+      "NamedTerm": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Slug"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "slug",
+          "name"
+        ],
+        "title": "NamedTerm"
+      },
+      "Point": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Order"
+          },
+          "activation": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "proximity",
+                "gaze",
+                "keyboard"
+              ]
+            },
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "title": "Activation"
+          },
+          "elements": {
+            "items": {
+              "$ref": "#/components/schemas/ElementSummary"
+            },
+            "type": "array",
+            "title": "Elements"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "order",
+          "activation",
+          "elements"
+        ],
+        "title": "Point"
+      },
+      "Problem": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "not_found",
+              "schema_incompatible",
+              "validation"
+            ],
+            "title": "Code"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "detail"
+        ],
+        "title": "Problem"
+      },
+      "Resource": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "model_3d",
+              "image",
+              "audio",
+              "video",
+              "narration",
+              "subtitles"
+            ],
+            "title": "Kind"
+          },
+          "mime": {
+            "type": "string",
+            "title": "Mime"
+          },
+          "byte_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Byte Count"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "alternative_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternative Text"
+          },
+          "credit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceVariant"
+            },
+            "type": "array",
+            "title": "Variants"
+          },
+          "transcription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcription"
+          },
+          "subtitles_resource_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^\\S+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitles Resource Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "mime"
+        ],
+        "title": "Resource"
+      },
+      "ResourceVariant": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Id"
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "web",
+              "quest"
+            ],
+            "title": "Profile"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "profile"
+        ],
+        "title": "ResourceVariant"
+      },
+      "Restriction": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "no_download",
+              "no_reuse",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "description"
+        ],
+        "title": "Restriction"
+      },
+      "Room": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Order"
+          },
+          "short_description": {
+            "type": "string",
+            "title": "Short Description",
+            "default": ""
+          },
+          "ambient_audio_resource_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^\\S+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ambient Audio Resource Id"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/Point"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "order",
+          "points"
+        ],
+        "title": "Room"
+      },
+      "Source": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "publication",
+              "interview",
+              "other"
+            ],
+            "title": "Kind"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "reference"
+        ],
+        "title": "Source"
+      },
+      "TextBlock": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "documented_fact",
+              "testimony",
+              "interpretation"
+            ],
+            "title": "Kind"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^\\S+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "attribution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "text"
+        ],
+        "title": "TextBlock"
+      },
+      "Tour": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version"
+          },
+          "tour": {
+            "$ref": "#/components/schemas/TourMetadata"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/Room"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Rooms"
+          },
+          "guide": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Guide"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "tour",
+          "rooms"
+        ],
+        "title": "Tour"
+      },
+      "TourMetadata": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "name"
+        ],
+        "title": "TourMetadata"
+      }
+    }
+  }
+}
