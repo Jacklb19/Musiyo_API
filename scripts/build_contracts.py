@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from app.main import Tour, app
-from app.contracts import Element, SelectionConfirmed
+from app.contracts import Element, SelectionConfirmed, SelectionCleared
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +21,7 @@ def main() -> None:
     write_json(CONTRACTS / "tour.v1.schema.json", Tour.model_json_schema())
     write_json(CONTRACTS / "element.v1.schema.json", Element.model_json_schema())
     write_json(CONTRACTS / "bridge.v1.schema.json", SelectionConfirmed.model_json_schema())
+    write_json(CONTRACTS / "bridge-clear.v1.schema.json", SelectionCleared.model_json_schema())
 
 
 if __name__ == "__main__":

@@ -1,0 +1,49 @@
+{
+  "$defs": {
+    "ClearedSelectionData": {
+      "additionalProperties": false,
+      "properties": {
+        "tour_key": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Tour Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tour_key"
+      ],
+      "title": "ClearedSelectionData",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "const": "musiyo-unity",
+      "title": "Source",
+      "type": "string"
+    },
+    "type": {
+      "const": "selection_cleared",
+      "title": "Type",
+      "type": "string"
+    },
+    "version": {
+      "const": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "data": {
+      "$ref": "#/$defs/ClearedSelectionData"
+    }
+  },
+  "required": [
+    "source",
+    "type",
+    "version",
+    "data"
+  ],
+  "title": "SelectionCleared",
+  "type": "object"
+}

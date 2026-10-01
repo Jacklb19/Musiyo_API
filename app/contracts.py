@@ -211,3 +211,21 @@ class SelectionConfirmed(ContractModel):
         if type(value) is not int:
             raise ValueError("Message version must be an integer")
         return value
+
+
+class ClearedSelectionData(ContractModel):
+    tour_key: Identifier
+
+
+class SelectionCleared(ContractModel):
+    source: Literal["musiyo-unity"]
+    type: Literal["selection_cleared"]
+    version: Literal[1]
+    data: ClearedSelectionData
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def validate_version_type(cls, value):
+        if type(value) is not int:
+            raise ValueError("Message version must be an integer")
+        return value
