@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "tour": {
+    "key": "tour-test",
+    "name": "Recorrido de prueba",
+    "revision": null
+  },
+  "rooms": [
+    {
+      "key": "room-test",
+      "name": "Sala de prueba",
+      "order": 3,
+      "short_description": "",
+      "ambient_audio_resource_id": null,
+      "points": [
+        {
+          "key": "point-01",
+          "name": "Punto de prueba 1",
+          "order": 1,
+          "activation": [
+            "keyboard"
+          ],
+          "elements": []
+        }
+      ]
+    }
+  ],
+  "guide": null
+}

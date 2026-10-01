@@ -21,7 +21,8 @@ def client_with_data(tmp_path):
         db.add_all([
             Elemento(
                 id="visible", titulo="Elemento sintético", descripcion="Solo prueba",
-                interpretacion="", estado_aprobacion="aprobado", aprobado_en=NOW,
+                interpretacion="Interpretación sintética", fuentes="Fuente sintética", creditos="Autor de prueba",
+                restricciones="Uso de prueba", estado_aprobacion="aprobado", aprobado_en=NOW,
                 autorizado_desde=NOW - timedelta(days=1),
             ),
             Elemento(
@@ -85,37 +86,51 @@ def client_with_data(tmp_path):
 
 def test_publication_fail_closed(tmp_path):
     client = client_with_data(tmp_path)
-    listado = client.get("/api/v1/elementos")
-    assert listado.status_code == 200
-    assert [item["id"] for item in listado.json()] == ["visible"]
+    listing = client.get("/api/v1/elements")
+    assert listing.status_code == 200
+    assert [item["slug"] for item in listing.json()] == ["visible"]
     for denied in ("borrador", "vencido", "revocado", "sin-autorizacion"):
-        assert client.get(f"/api/v1/elementos/{denied}").status_code == 404
-    assert client.get("/api/v1/elementos/visible").json()["titulo"] == "Elemento sintético"
+        assert client.get(f"/api/v1/elements/{denied}").status_code == 404
+    assert client.get("/api/v1/elements/visible").json()["title"] == "Elemento sintético"
+
+
+def test_legacy_adapter_preserves_text_and_source_links(tmp_path):
+    from app.contracts import Element
+    response = client_with_data(tmp_path).get("/api/v1/elements/visible")
+    element = Element.model_validate_json(response.content)
+    assert element.blocks[0].kind == "interpretation"
+    assert element.blocks[0].text == "Interpretación sintética"
+    assert element.blocks[0].source_id == element.sources[0].id
+    assert element.sources[0].reference == "Fuente sintética"
+    assert element.credits[0].name == "Autor de prueba"
+    assert element.restrictions[0].description == "Uso de prueba"
+    assert element.community is None and element.resources == []
 
 
 def test_contract_filters_denied_elements_and_preserves_repetition(tmp_path):
     client = client_with_data(tmp_path)
-    response = client.get("/api/v1/recorridos/recorrido-prueba")
+    response = client.get("/api/v1/tours/recorrido-prueba")
     assert response.status_code == 200
-    assert response.json() == {
-        "schemaVersion": 1,
-        "recorridoId": "recorrido-prueba",
-        "salas": [{
-            "id": "sala-prueba",
-            "orden": 0,
-            "puntos": [
-                {"anclajeId": "punto-01", "elementoIds": ["visible"]},
-                {"anclajeId": "punto-02", "elementoIds": ["visible"]},
-            ],
-        }],
-    }
-    assert client.get("/api/v1/recorridos/inexistente").status_code == 404
+    from app.contracts import Tour
+    contract = Tour.model_validate_json(response.content)
+    assert contract.schema_version == 1
+    assert contract.tour.key == "recorrido-prueba"
+    assert contract.rooms[0].key == "sala-prueba"
+    assert [point.key for point in contract.rooms[0].points] == ["punto-01", "punto-02"]
+    assert [[item.slug for item in point.elements] for point in contract.rooms[0].points] == [["visible"], ["visible"]]
+    assert contract.guide is None
+    assert client.get("/api/v1/tours/inexistente").status_code == 404
+    assert client.get("/api/v1/tours/recorrido-prueba?schema_version=2").status_code == 409
+    incompatible = client.get("/api/v1/tours/recorrido-prueba?schema_version=2")
+    assert incompatible.headers["content-type"] == "application/problem+json"
+    assert incompatible.json()["code"] == "schema_incompatible"
+    assert client.get("/api/v1/tours/recorrido-prueba?schema_version=invalid").json()["code"] == "validation"
 
 
 def test_resources_require_both_authorizations_and_safe_storage(tmp_path):
     client = client_with_data(tmp_path)
-    base = "/api/v1/elementos"
-    allowed = client.get(f"{base}/visible/recursos/autorizado")
+    base = "/api/v1/elements"
+    allowed = client.get(f"{base}/visible/resources/autorizado")
     assert allowed.status_code == 200
     assert allowed.text == "contenido sintético"
     assert allowed.headers["cache-control"] == "private, no-store"
@@ -125,4 +140,4 @@ def test_resources_require_both_authorizations_and_safe_storage(tmp_path):
         ("visible", "fuera"),
         ("visible", "de-borrador"),
     ]:
-        assert client.get(f"{base}/{element}/recursos/{resource}").status_code == 404
+        assert client.get(f"{base}/{element}/resources/{resource}").status_code == 404
