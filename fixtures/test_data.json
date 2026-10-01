@@ -1,1 +1,43 @@
-{"tour_key":"recorrido-prueba","rooms":[{"key":"sala-prueba","order":0,"points":[{"key":"punto-01","order":0},{"key":"punto-02","order":1},{"key":"punto-03","order":2}]}]}
+{
+  "schema_version": 1,
+  "tour": {
+    "key": "recorrido-prueba",
+    "name": "recorrido-prueba"
+  },
+  "rooms": [
+    {
+      "key": "sala-prueba",
+      "name": "sala-prueba",
+      "order": 0,
+      "points": [
+        {
+          "key": "punto-01",
+          "name": "Punto de prueba 1",
+          "order": 0,
+          "activation": [
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto-02",
+          "name": "Punto de prueba 2",
+          "order": 1,
+          "activation": [
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto-03",
+          "name": "Punto de prueba 3",
+          "order": 2,
+          "activation": [
+            "keyboard"
+          ],
+          "elements": []
+        }
+      ]
+    }
+  ]
+}

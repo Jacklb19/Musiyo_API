@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, create_engine
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
 
@@ -45,12 +45,27 @@ class ResourceRecord(Base):
     element: Mapped[ElementRecord] = relationship(back_populates="resources")
 
 
+class TourRecord(Base):
+    __tablename__ = "tours"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    name: Mapped[str] = mapped_column(String(250))
+    published: Mapped[bool] = mapped_column(Boolean, default=False)
+    revision: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    guide_key: Mapped[str | None] = mapped_column(String(100))
+    guide_name: Mapped[str | None] = mapped_column(String(250))
+    guide_room_key: Mapped[str | None] = mapped_column(String(100))
+    guide_available: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
 class RoomRecord(Base):
     __tablename__ = "rooms"
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
     tour_id: Mapped[str] = mapped_column(String(100), index=True)
     order: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(250), default="")
+    short_description: Mapped[str] = mapped_column(Text, default="")
     points: Mapped[list[PointRecord]] = relationship(back_populates="room")
 
 
@@ -60,6 +75,8 @@ class PointRecord(Base):
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
     room_id: Mapped[str] = mapped_column(ForeignKey("rooms.id"))
     order: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(250), default="")
+    activation: Mapped[list[str]] = mapped_column(JSON, default=lambda: ["keyboard"])
     room: Mapped[RoomRecord] = relationship(back_populates="points")
     elements: Mapped[list[PointElementRecord]] = relationship(back_populates="point")
 
