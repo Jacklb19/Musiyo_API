@@ -1,0 +1,10 @@
+{
+  "source": "musiyo-unity",
+  "type": "selection_confirmed",
+  "version": 1,
+  "data": {
+    "tour_key": "tour-test",
+    "point_key": "point-01",
+    "element_slug": null
+  }
+}
