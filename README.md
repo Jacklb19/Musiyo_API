@@ -13,13 +13,15 @@ La API vacía no publica fichas. El seed crea una sala y tres puntos sin element
 
 ## Contrato v1
 
-- `GET /api/v1/salud`
-- `GET /api/v1/elementos`
-- `GET /api/v1/elementos/{id}`
-- `GET /api/v1/elementos/{id}/recursos/{recurso_id}`
-- `GET /api/v1/recorridos/{id}`
+- `GET /api/v1/health`
+- `GET /api/v1/elements`
+- `GET /api/v1/elements/{element_id}`
+- `GET /api/v1/elements/{element_id}/resources/{resource_id}`
+- `GET /api/v1/tours/{tour_id}?schema_version=1`
 
-El recorrido responde con `schemaVersion: 1`, `recorridoId`, salas ordenadas y puntos con `anclajeId` y `elementoIds`. Es compatible con el contrato de prueba del cliente Unity. Las respuestas filtran cualquier ficha sin aprobación y autorización vigentes. Los recursos también requieren aprobación y autorización propias; sus rutas se limitan al almacenamiento privado. Los contenidos no disponibles devuelven 404.
+Los esquemas v1 y ejemplos sintéticos canónicos están en `contracts/`: recorrido (`tour`, `rooms`, `guide`), ficha con bloques tipados y mensaje `selection_confirmed`. Los errores usan `application/problem+json`. La publicación sigue exigiendo aprobación y autorización vigentes.
+
+Desde la raíz, ejecutar `python -m scripts.build_contracts` y `python -m scripts.sync_contracts` (o `sh scripts/sync_contracts.sh`) para copiar JSON, hashes SHA-256 y DTO Unity a los repositorios hermanos. Web genera sus tipos con `npm.cmd run contracts:generate`. La persistencia española es legado: los valores desconocidos se entregan vacíos y su migración queda para T-05.
 
 ## Pruebas
 

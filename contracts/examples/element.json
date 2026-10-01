@@ -1,0 +1,43 @@
+{
+  "slug": "synthetic-item",
+  "language": "es",
+  "title": "Elemento sintético",
+  "description": "Datos exclusivamente de prueba.",
+  "community": null,
+  "category": null,
+  "collections": [],
+  "technique": null,
+  "materials": [],
+  "blocks": [
+    {
+      "id": "block-test",
+      "kind": "interpretation",
+      "text": "Interpretación sintética para validar el contrato.",
+      "source_id": "source-test",
+      "attribution": null,
+      "context": null
+    }
+  ],
+  "sources": [
+    {
+      "id": "source-test",
+      "kind": "other",
+      "reference": "Referencia sintética",
+      "url": null
+    }
+  ],
+  "credits": [
+    {
+      "role": null,
+      "name": "Autor de prueba"
+    }
+  ],
+  "restrictions": [
+    {
+      "kind": "other",
+      "description": "Solo para pruebas técnicas"
+    }
+  ],
+  "resources": [],
+  "last_modified": null
+}
