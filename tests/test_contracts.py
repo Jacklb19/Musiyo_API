@@ -11,10 +11,22 @@ from app.contracts import (
     ResourceAccess,
     SelectionCleared,
     SelectionConfirmed,
+    ValidatorSession,
 )
 from app.main import Element, Tour, app
 
 CONTRACTS = Path(__file__).resolve().parents[1] / "contracts"
+
+
+def test_validator_session_contract_rejects_inconsistent_account_state():
+    schema = read_json(CONTRACTS / "validator-session.v1.schema.json")
+    assert schema == ValidatorSession.model_json_schema()
+    example = read_json(CONTRACTS / "examples/validator_session.json")
+    Draft202012Validator(schema).validate(example)
+    ValidatorSession.model_validate(example)
+    for mutation in ({"schema_version":True}, {"user":None}, {"csrf_token":None}, {"authenticated":False}):
+        with pytest.raises(ValidationError):
+            ValidatorSession.model_validate(example | mutation)
 
 
 def test_resource_access_contract_is_canonical_and_versioned():

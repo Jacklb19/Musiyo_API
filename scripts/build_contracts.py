@@ -10,6 +10,7 @@ from app.contracts import (
     ResourceAccess,
     SelectionCleared,
     SelectionConfirmed,
+    ValidatorSession,
 )
 from app.main import Tour, app
 
@@ -31,6 +32,7 @@ def main() -> None:
     write_json(CONTRACTS / "catalog.v1.schema.json", CatalogPage.model_json_schema())
     write_json(CONTRACTS / "catalog-facet.v1.schema.json", CatalogFacet.model_json_schema())
     write_json(CONTRACTS / "resource-access.v1.schema.json", ResourceAccess.model_json_schema())
+    write_json(CONTRACTS / "validator-session.v1.schema.json", ValidatorSession.model_json_schema())
 
 
 if __name__ == "__main__":

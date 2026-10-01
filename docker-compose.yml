@@ -30,6 +30,7 @@ services:
     build: .
     environment:
       MUSIYO_DATABASE_URL: postgresql+psycopg://musiyo:${MUSIYO_DB_PASSWORD}@postgres:5432/musiyo
+      MUSIYO_WEB_ORIGIN: ${MUSIYO_WEB_ORIGIN:-http://localhost:5173}
       MUSIYO_STORAGE_ROOT: /storage
       MUSIYO_STORAGE_BACKEND: s3
       MUSIYO_LOCAL_COMPOSE: "1"

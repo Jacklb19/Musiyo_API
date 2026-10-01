@@ -1,5 +1,6 @@
 """Local content administration; public responses remain behind validity views."""
 import hashlib
+import re
 import shutil
 from pathlib import Path
 from uuid import uuid4
@@ -257,33 +258,39 @@ def verify_validity(database_url=None):
 
 def reindex(database_url=None, element_id=None):
     with make_session_factory(database_url).begin() as db:
-        public = PublicRepository(db)
-        allowed = set(db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id)))
-        if element_id is not None:
-            allowed &= {element_id}
-        table = CONTENT["index_fragments"]
-        condition = table.c.element_id == element_id if element_id else sa.true()
-        db.execute(table.delete().where(condition))
-        count = 0
-        for slug in sorted(allowed):
-            record = public.element(slug)
-            if record is None:
-                continue
-            for block in record.blocks:
-                if block.id == "legacy-interpretation":
-                    continue
-                db.execute(table.insert().values(element_id=slug, block_id=block.id, text=block.text,
-                    text_hash=hashlib.sha256(block.text.encode("utf-8")).hexdigest(), embedding_model="pending", embedding=None))
-                count += 1
+        count = reindex_in_session(db, element_id)
     return {"indexed_fragments": count, "embedding_status": "pending_provider"}
 
 
+def reindex_in_session(db, element_id=None, now=utc_now):
+    public = PublicRepository(db, now)
+    allowed = set(db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id)))
+    if element_id is not None:
+        allowed &= {element_id}
+    table = CONTENT["index_fragments"]
+    condition = table.c.element_id == element_id if element_id else sa.true()
+    db.execute(table.delete().where(condition))
+    count = 0
+    for slug in sorted(allowed):
+        record = public.element(slug)
+        if record is None:
+            continue
+        for block in record.blocks:
+            if block.id == "legacy-interpretation":
+                continue
+            db.execute(table.insert().values(element_id=slug, block_id=block.id, text=block.text,
+                text_hash=hashlib.sha256(block.text.encode("utf-8")).hexdigest(), embedding_model="pending", embedding=None))
+            count += 1
+    return count
+
+
 def create_validator(username, name, password, database_url=None):
-    if not username.strip() or not name.strip() or len(password) < 12:
+    username = username.strip().lower()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{2,99}", username) or not name.strip() or len(password) < 12:
         raise ValueError("Validator requires a username, name, and password of at least 12 characters")
     with make_session_factory(database_url).begin() as db:
         table = CONTENT["validators"]
-        if db.scalar(sa.select(table.c.id).where(table.c.username == username)):
+        if db.scalar(sa.select(table.c.id).where(sa.func.lower(table.c.username) == username)):
             raise ValueError("Validator already exists")
         identifier = str(uuid4())
         db.execute(table.insert().values(id=identifier, username=username, name=name, password_hash=PasswordHasher().hash(password)))

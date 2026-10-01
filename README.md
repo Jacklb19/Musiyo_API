@@ -16,6 +16,8 @@ La migración `0003` normaliza fichas, fuentes, categorías, colecciones, recurs
 
 Paquetes privados JSON: `musiyo import ruta/manifest.json --dry-run`, luego el mismo comando sin `--dry-run`. Formato en `schemas/content-package.v1.schema.json`. Administración: `revoke --element SLUG --reason MOTIVO` (o `--resource ID`), `withdraw --tour KEY`, `verify-validity`, `reindex`, `create-validator --username USER --name NAME` y `export-state`. `reindex` prepara fragmentos; los embeddings requieren el adaptador de T-50. No ejecuta llamadas a proveedores.
 
+Cuentas mediante `create-validator` (contraseña solicitada por consola). La API usa sesiones de 8 horas, cookie segura y CSRF para correcciones de texto. Configurar `MUSIYO_WEB_ORIGIN` con el origen exacto de la Web; en producción servir Web/API por HTTPS en el mismo origen.
+
 ## Comprobaciones
 
 Los accesos a archivos duran 300 segundos. `MUSIYO_STORAGE_BACKEND=s3` usa un bucket privado existente; `musiyo configure-storage --web-origin https://tu-web.example` limita su CORS. La importación transfiere archivos solo a MinIO local; para almacenamiento remoto se necesita un flujo autorizado independiente. En local se usa entrega firmada por la API; configurar una `MUSIYO_RESOURCE_SIGNING_KEY` privada común si se ejecutan varios procesos.
