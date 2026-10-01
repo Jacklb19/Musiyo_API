@@ -18,4 +18,6 @@ Paquetes privados JSON: `musiyo import ruta/manifest.json --dry-run`, luego el m
 
 ## Comprobaciones
 
+Los accesos a archivos duran 300 segundos. `MUSIYO_STORAGE_BACKEND=s3` usa un bucket privado existente; `musiyo configure-storage --web-origin https://tu-web.example` limita su CORS. La importación transfiere archivos solo a MinIO local; para almacenamiento remoto se necesita un flujo autorizado independiente. En local se usa entrega firmada por la API; configurar una `MUSIYO_RESOURCE_SIGNING_KEY` privada común si se ejecutan varios procesos.
+
 `ruff check .`, `mypy` y `pytest`. Regenerar contratos con `python -m scripts.build_contracts` y sincronizar con `python -m scripts.sync_contracts`; Web: `npm.cmd run contracts:generate`. No incluir contenido privado ni claves en Git.

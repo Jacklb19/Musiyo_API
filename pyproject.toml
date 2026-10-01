@@ -9,7 +9,8 @@ dependencies = [
   "sqlalchemy>=2.0,<3",
   "psycopg[binary]>=3.2,<4",
   "alembic==1.20.0",
-  "argon2-cffi==25.1.0"
+  "argon2-cffi==25.1.0",
+  "boto3==1.43.97"
 ]
 
 [project.scripts]
@@ -44,3 +45,7 @@ check_untyped_defs = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["boto3", "botocore.*"]
+ignore_missing_imports = true

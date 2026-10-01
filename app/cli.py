@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -21,6 +22,7 @@ from app.content_operations import (
 from app.contracts import Tour
 from app.db import PointRecord, RoomRecord, TourRecord, make_session_factory
 from app.migrations import upgrade_database
+from app.resource_storage import S3Storage
 
 
 def import_test_data(database_url: str | None = None, dataset: str = "test-data") -> dict[str, int]:
@@ -82,6 +84,8 @@ def main(argv=None):
     withdrawal = commands.add_parser("withdraw")
     withdrawal.add_argument("--tour", required=True)
     commands.add_parser("verify-validity")
+    storage = commands.add_parser("configure-storage")
+    storage.add_argument("--web-origin", required=True)
     indexer = commands.add_parser("reindex")
     indexer.add_argument("--element")
     validator = commands.add_parser("create-validator")
@@ -108,6 +112,9 @@ def main(argv=None):
             result = withdraw_tour(args.tour)
         elif args.command == "verify-validity":
             result = verify_validity()
+        elif args.command == "configure-storage":
+            S3Storage.from_environment().configure_cors(args.web_origin)
+            result = {"configured": True}
         elif args.command == "reindex":
             result = reindex(element_id=args.element)
         elif args.command == "create-validator":
@@ -125,6 +132,8 @@ def main(argv=None):
         parser.exit(2, "Invalid manifest fields: " + ", ".join(fields) + "\n")
     except SQLAlchemyError:
         parser.exit(2, "Database operation failed; check migrations and relationships\n")
+    except (BotoCoreError, ClientError):
+        parser.exit(2, "Private storage operation failed; check its configuration\n")
     except (ValueError, OSError) as error:
         parser.exit(2, str(error) + "\n")
 

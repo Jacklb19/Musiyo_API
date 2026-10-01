@@ -8,12 +8,23 @@ from pydantic import ValidationError
 from app.contracts import (
     CatalogFacet,
     CatalogPage,
+    ResourceAccess,
     SelectionCleared,
     SelectionConfirmed,
 )
 from app.main import Element, Tour, app
 
 CONTRACTS = Path(__file__).resolve().parents[1] / "contracts"
+
+
+def test_resource_access_contract_is_canonical_and_versioned():
+    schema = read_json(CONTRACTS / "resource-access.v1.schema.json")
+    assert schema == ResourceAccess.model_json_schema()
+    example = read_json(CONTRACTS / "examples/resource_access.json")
+    Draft202012Validator(schema).validate(example)
+    ResourceAccess.model_validate_json(json.dumps(example))
+    with pytest.raises(ValidationError):
+        ResourceAccess.model_validate_json(json.dumps(example | {"schema_version": True}))
 
 
 def test_catalog_contracts_and_example_are_canonical():
