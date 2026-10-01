@@ -1,13 +1,12 @@
 import json
 from pathlib import Path
 
+import pytest
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
+from app.contracts import SelectionCleared, SelectionConfirmed
 from app.main import Element, Tour, app
-from app.contracts import SelectionConfirmed, SelectionCleared
-import pytest
-
 
 CONTRACTS = Path(__file__).resolve().parents[1] / "contracts"
 

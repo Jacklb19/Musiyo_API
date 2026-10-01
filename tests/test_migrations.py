@@ -4,7 +4,13 @@ import pytest
 from sqlalchemy import create_engine, inspect, select, text
 
 from app.cli import import_test_data
-from app.db import ElementRecord, PointElementRecord, PointRecord, RoomRecord, make_session_factory
+from app.db import (
+    ElementRecord,
+    PointElementRecord,
+    PointRecord,
+    RoomRecord,
+    make_session_factory,
+)
 from app.migrations import upgrade_database
 
 

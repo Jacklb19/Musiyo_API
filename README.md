@@ -14,4 +14,4 @@ La migración inicial conserva las filas del prototipo y convierte tablas, campo
 
 ## Comprobaciones
 
-`pytest`. Regenerar contratos con `python -m scripts.build_contracts` y sincronizar con `python -m scripts.sync_contracts`; Web: `npm.cmd run contracts:generate`. No incluir contenido privado ni claves en Git.
+`ruff check .`, `mypy` y `pytest`. Regenerar contratos con `python -m scripts.build_contracts` y sincronizar con `python -m scripts.sync_contracts`; Web: `npm.cmd run contracts:generate`. No incluir contenido privado ni claves en Git.

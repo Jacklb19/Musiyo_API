@@ -3,8 +3,8 @@
 import hashlib
 import shutil
 from pathlib import Path
-from scripts.generate_unity_contracts import generate
 
+from scripts.generate_unity_contracts import generate
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "contracts"

@@ -1,6 +1,6 @@
 """T-05: initialize English persistence or preserve and migrate the legacy prototype."""
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0001"
 down_revision = None

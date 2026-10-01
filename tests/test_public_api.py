@@ -4,9 +4,16 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.db import Base, ElementRecord, PointRecord, PointElementRecord, ResourceRecord, RoomRecord, TourRecord
+from app.db import (
+    Base,
+    ElementRecord,
+    PointElementRecord,
+    PointRecord,
+    ResourceRecord,
+    RoomRecord,
+    TourRecord,
+)
 from app.main import create_app
-
 
 NOW = datetime(2026, 9, 27, 12, tzinfo=timezone.utc)
 

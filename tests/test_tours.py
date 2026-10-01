@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -41,3 +42,20 @@ def test_prototype_and_full_museum_can_coexist(tmp_path):
     client = TestClient(create_app(factory))
     assert client.get("/api/v1/tours/recorrido-prueba").status_code == 200
     assert client.get("/api/v1/tours/museum-main?schema_version=2").status_code == 409
+
+
+@pytest.mark.parametrize("missing", ["name", "room", "unknown_room"])
+def test_incomplete_guide_metadata_does_not_break_public_tour(tmp_path, missing):
+    url = f"sqlite:///{tmp_path / 'incomplete.db'}"
+    upgrade_database(url)
+    import_test_data(url, "museum-test-data")
+    factory = make_session_factory(url)
+    with factory.begin() as db:
+        tour = db.get(TourRecord, "museum-main")
+        if missing == "name":
+            tour.guide_name = None
+        else:
+            tour.guide_room_key = None if missing == "room" else "unknown"
+    response = TestClient(create_app(factory)).get("/api/v1/tours/museum-main")
+    assert response.status_code == 200
+    assert Tour.model_validate_json(response.content).guide is None

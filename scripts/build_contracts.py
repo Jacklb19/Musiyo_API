@@ -3,9 +3,8 @@
 import json
 from pathlib import Path
 
+from app.contracts import Element, SelectionCleared, SelectionConfirmed
 from app.main import Tour, app
-from app.contracts import Element, SelectionConfirmed, SelectionCleared
-
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = ROOT / "contracts"
