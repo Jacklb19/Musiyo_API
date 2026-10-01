@@ -1,17 +1,40 @@
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from .contracts import Credit, Element, ElementSummary, Guide, Health, Point, Problem, Restriction, Room, Source, TextBlock, Tour, TourMetadata
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .contracts import (
+    Credit,
+    Element,
+    ElementSummary,
+    Guide,
+    Health,
+    Point,
+    Problem,
+    Restriction,
+    Room,
+    Source,
+    TextBlock,
+    Tour,
+    TourMetadata,
+)
 from .db import (
-    ElementRecord, PointRecord, PointElementRecord, ResourceRecord, RoomRecord, TourRecord, is_public_element,
-    make_session_factory, is_public_resource, storage_root, utc_now,
+    ElementRecord,
+    PointElementRecord,
+    PointRecord,
+    ResourceRecord,
+    RoomRecord,
+    TourRecord,
+    is_public_element,
+    is_public_resource,
+    make_session_factory,
+    storage_root,
+    utc_now,
 )
 
 
@@ -41,7 +64,10 @@ def create_app(
     })
 
     def problem_response(status: int, detail: str):
-        code = {404: "not_found", 409: "schema_incompatible"}.get(status, "validation")
+        codes: dict[int, Literal["not_found", "schema_incompatible", "validation"]] = {
+            404: "not_found", 409: "schema_incompatible"
+        }
+        code = codes.get(status, "validation")
         problem = Problem(type="about:blank", title=detail, status=status, code=code, detail=detail)
         return JSONResponse(problem.model_dump(), status_code=status, media_type="application/problem+json")
 
@@ -150,8 +176,9 @@ def create_app(
                     for point in points
                 ],
             ))
-        guide = Guide(key=tour.guide_key, name=tour.guide_name, room_key=tour.guide_room_key,
-                      available=tour.guide_available) if tour.guide_key else None
+        guide_key, guide_name, guide_room = tour.guide_key, tour.guide_name, tour.guide_room_key
+        guide = Guide(key=guide_key, name=guide_name, room_key=guide_room, available=tour.guide_available) \
+            if guide_key and guide_name and guide_room and guide_room in {room.key for room in result} else None
         return Tour(schema_version=1,
                     tour=TourMetadata(key=tour.id, name=tour.name, revision=tour.revision),
                     rooms=result, guide=guide)

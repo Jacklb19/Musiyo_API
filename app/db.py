@@ -4,8 +4,25 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    create_engine,
+)
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+    sessionmaker,
+)
+
+from .contracts import Activation
 
 
 class Base(DeclarativeBase):
@@ -76,7 +93,7 @@ class PointRecord(Base):
     room_id: Mapped[str] = mapped_column(ForeignKey("rooms.id"))
     order: Mapped[int] = mapped_column(Integer)
     name: Mapped[str] = mapped_column(String(250), default="")
-    activation: Mapped[list[str]] = mapped_column(JSON, default=lambda: ["keyboard"])
+    activation: Mapped[list[Activation]] = mapped_column(JSON, default=lambda: ["keyboard"])
     room: Mapped[RoomRecord] = relationship(back_populates="points")
     elements: Mapped[list[PointElementRecord]] = relationship(back_populates="point")
 
@@ -121,7 +138,7 @@ def is_public_resource(resource: ResourceRecord, now: datetime) -> bool:
 
 
 def make_session_factory(database_url: str | None = None):
-    url = database_url or os.getenv("MUSIYO_DATABASE_URL", "sqlite:///./musiyo.db")
+    url = database_url or os.getenv("MUSIYO_DATABASE_URL") or "sqlite:///./musiyo.db"
     kwargs = {"connect_args": {"check_same_thread": False}} if url.startswith("sqlite:") else {}
     engine = create_engine(url, **kwargs)
     return sessionmaker(engine, expire_on_commit=False)

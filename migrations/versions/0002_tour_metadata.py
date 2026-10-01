@@ -1,6 +1,6 @@
 """T-14: published tours and visitor names without changing stable anchor keys."""
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0002"
 down_revision = "0001"
