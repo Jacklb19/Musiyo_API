@@ -70,6 +70,10 @@ def content_tables(metadata):
         reference("corrected_by", "validators.id", nullable=True), sa.Column("corrected_at", sa.DateTime(timezone=True)),
         sa.Column("search_text", sa.Text(), nullable=False, server_default=""),
         sa.CheckConstraint("language = 'es'", name="ck_detail_language"))
+    sa.Table("element_search", metadata, sa.Column("element_id", sa.String(100), sa.ForeignKey("elements.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("title", sa.Text(), nullable=False), sa.Column("terms", sa.Text(), nullable=False),
+        sa.Column("body", sa.Text(), nullable=False), sa.Column("normalized_title", sa.Text()),
+        sa.Column("search_vector", sa.Text().with_variant(TSVECTOR(), "postgresql")))
     table("sources", identity(), sa.Column("kind", sa.String(30), nullable=False),
         sa.Column("reference", sa.Text(), nullable=False), sa.Column("url", sa.Text()), sa.Column("year", sa.Integer()),
         sa.CheckConstraint("kind IN ('publication','interview','document','archive','web','other')", name="ck_source_kind"))

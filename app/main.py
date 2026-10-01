@@ -1,13 +1,15 @@
 from pathlib import Path
 from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .contracts import (
+    CatalogFacet,
+    CatalogPage,
     Element,
     Health,
     Problem,
@@ -62,6 +64,24 @@ def create_app(
     @app.get("/api/v1/elements", response_model=list[Element])
     def list_elements(db: Db):
         return PublicRepository(db, now).elements()
+
+    @app.get("/api/v1/categories", response_model=list[CatalogFacet])
+    def list_categories(db: Db):
+        return PublicRepository(db, now).facets("categories")
+
+    @app.get("/api/v1/collections", response_model=list[CatalogFacet])
+    def list_collections(db: Db):
+        return PublicRepository(db, now).facets("collections")
+
+    @app.get("/api/v1/catalog", response_model=CatalogPage)
+    def get_catalog(db: Db, query: Annotated[str, Query(max_length=200)] = "",
+                    category: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
+                    collection: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
+                    highlighted: bool = False, limit: Annotated[int, Query(ge=1, le=100)] = 24,
+                    offset: Annotated[int, Query(ge=0, le=100000)] = 0, schema_version: int = 1):
+        if schema_version != 1:
+            raise HTTPException(409, "Versión de contrato incompatible")
+        return PublicRepository(db, now).catalog(query, category, collection, highlighted, limit, offset)
 
     @app.get("/api/v1/elements/{element_id}", response_model=Element)
     def get_element(element_id: str, db: Db):
