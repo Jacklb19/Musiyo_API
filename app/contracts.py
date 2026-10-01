@@ -104,6 +104,39 @@ class NamedTerm(ContractModel):
     name: str
 
 
+class CatalogFacet(NamedTerm):
+    element_count: int = Field(ge=1)
+
+
+class CatalogItem(ElementSummary):
+    description: str
+    category: NamedTerm | None = None
+
+
+class CatalogPage(ContractModel):
+    schema_version: Literal[1]
+    items: list[CatalogItem]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    offset: int = Field(ge=0)
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def validate_version_type(cls, value):
+        if type(value) is not int:
+            raise ValueError("Schema version must be an integer")
+        return value
+
+    @model_validator(mode="after")
+    def validate_page(self):
+        slugs = [item.slug for item in self.items]
+        if len(slugs) != len(set(slugs)) or len(slugs) > self.limit:
+            raise ValueError("Invalid catalog page")
+        if len(slugs) > max(0, self.total - self.offset):
+            raise ValueError("Catalog count does not match the page")
+        return self
+
+
 class Community(ContractModel):
     name: str
     people: Identifier

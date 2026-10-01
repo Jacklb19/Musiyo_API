@@ -3,7 +3,13 @@
 import json
 from pathlib import Path
 
-from app.contracts import Element, SelectionCleared, SelectionConfirmed
+from app.contracts import (
+    CatalogFacet,
+    CatalogPage,
+    Element,
+    SelectionCleared,
+    SelectionConfirmed,
+)
 from app.main import Tour, app
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +27,8 @@ def main() -> None:
     write_json(CONTRACTS / "element.v1.schema.json", Element.model_json_schema())
     write_json(CONTRACTS / "bridge.v1.schema.json", SelectionConfirmed.model_json_schema())
     write_json(CONTRACTS / "bridge-clear.v1.schema.json", SelectionCleared.model_json_schema())
+    write_json(CONTRACTS / "catalog.v1.schema.json", CatalogPage.model_json_schema())
+    write_json(CONTRACTS / "catalog-facet.v1.schema.json", CatalogFacet.model_json_schema())
 
 
 if __name__ == "__main__":

@@ -5,8 +5,20 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
+from .catalog_search import local_rank
 from .content_tables import CONTENT
-from .contracts import Element, ElementSummary, Guide, Room, Tour, TourMetadata
+from .contracts import (
+    CatalogFacet,
+    CatalogItem,
+    CatalogPage,
+    Element,
+    ElementSummary,
+    Guide,
+    NamedTerm,
+    Room,
+    Tour,
+    TourMetadata,
+)
 from .db import utc_now
 
 
@@ -32,6 +44,69 @@ class PublicRepository:
             if connection is None:
                 raise RuntimeError("SQLite connection is unavailable")
             connection.create_function("musiyo_now", 0, lambda: instant)
+            connection.create_function("musiyo_catalog_rank", 4, local_rank, deterministic=True)
+
+    def facets(self, name: str) -> list[CatalogFacet]:
+        term = CONTENT[name]
+        metadata = CONTENT["element_metadata"] if name == "categories" else CONTENT["collection_elements"]
+        foreign_key = metadata.c.category_id if name == "categories" else metadata.c.collection_id
+        rows = self.db.execute(sa.select(term.c.slug, term.c.name,
+            sa.func.count(sa.distinct(ELEMENTS.c.id)).label("element_count"))
+            .join(metadata, foreign_key == term.c.id).join(ELEMENTS, ELEMENTS.c.id == metadata.c.element_id)
+            .group_by(term.c.id, term.c.slug, term.c.name, term.c.order).order_by(term.c.order, term.c.slug)).mappings()
+        return [CatalogFacet.model_validate(dict(row)) for row in rows]
+
+    def catalog(self, query: str = "", category: str | None = None, collection: str | None = None,
+                highlighted: bool = False, limit: int = 24, offset: int = 0) -> CatalogPage:
+        search, metadata, details = CONTENT["element_search"], CONTENT["element_metadata"], CONTENT["element_details"]
+        categories, communities = CONTENT["categories"], CONTENT["communities"]
+        statement = sa.select(ELEMENTS.c.id.label("slug"), sa.func.coalesce(details.c.title, ELEMENTS.c.title).label("title"),
+            sa.func.coalesce(details.c.description, ELEMENTS.c.description).label("description"),
+            categories.c.slug.label("category_slug"), categories.c.name.label("category_name"),
+            communities.c.name.label("community")).select_from(ELEMENTS)
+        statement = statement.outerjoin(details, details.c.element_id == ELEMENTS.c.id)
+        statement = statement.outerjoin(metadata, metadata.c.element_id == ELEMENTS.c.id)
+        statement = statement.outerjoin(categories, categories.c.id == metadata.c.category_id)
+        statement = statement.outerjoin(communities, communities.c.id == metadata.c.community_id)
+        if category:
+            statement = statement.where(categories.c.slug == category)
+        if collection:
+            links, terms = CONTENT["collection_elements"], CONTENT["collections"]
+            statement = statement.where(sa.exists(sa.select(1).select_from(links)
+                .join(terms, terms.c.id == links.c.collection_id)
+                .where(links.c.element_id == ELEMENTS.c.id, terms.c.slug == collection)))
+        if highlighted:
+            statement = statement.where(metadata.c.highlighted.is_(True))
+        rank = None
+        query = query.strip()
+        if query:
+            statement = statement.join(search, search.c.element_id == ELEMENTS.c.id)
+            if self.db.bind is not None and self.db.bind.dialect.name == "postgresql":
+                self.db.execute(sa.select(sa.func.set_config("pg_trgm.similarity_threshold", "0.3", True)))
+                terms_query = sa.func.websearch_to_tsquery(sa.literal_column("'public.spanish_unaccent'"), query)
+                normalized = sa.func.public.unaccent(sa.func.lower(query))
+                match = search.c.search_vector.bool_op("@@")(terms_query)
+                fuzzy = search.c.normalized_title.bool_op("%")(normalized)
+                rank = sa.func.ts_rank_cd(search.c.search_vector, terms_query) * 10 + sa.func.similarity(search.c.normalized_title, normalized)
+                statement = statement.where(sa.or_(match, fuzzy))
+            else:
+                rank = sa.func.musiyo_catalog_rank(search.c.title, search.c.terms, search.c.body, query)
+                statement = statement.where(rank > 0)
+        total = self.db.scalar(sa.select(sa.func.count()).select_from(statement.subquery())) or 0
+        statement = statement.order_by(rank.desc(), ELEMENTS.c.id) if rank is not None else statement.order_by(ELEMENTS.c.id)
+        rows = self.db.execute(statement.limit(limit).offset(offset)).mappings().all()
+        slugs = [row["slug"] for row in rows]
+        resources = self.db.execute(sa.select(RESOURCES.c.element_id, RESOURCES.c.id, RESOURCES.c.kind)
+            .where(RESOURCES.c.element_id.in_(slugs), RESOURCES.c.variant_of.is_(None)).order_by(RESOURCES.c.id)).mappings().all() if slugs else []
+        items = []
+        for row in rows:
+            available = [item for item in resources if item["element_id"] == row["slug"]]
+            items.append(CatalogItem(slug=row["slug"], title=row["title"], description=row["description"], community=row["community"],
+                category=NamedTerm(slug=row["category_slug"], name=row["category_name"]) if row["category_slug"] else None,
+                thumbnail_resource_id=next((item["id"] for item in available if item["kind"] == "image"), None),
+                has_3d_model=any(item["kind"] == "model_3d" for item in available),
+                has_narration=any(item["kind"] == "narration" for item in available)))
+        return CatalogPage(schema_version=1, items=items, total=total, limit=limit, offset=offset)
 
     def metadata(self, name: str, element_id: str):
         table = CONTENT[name]

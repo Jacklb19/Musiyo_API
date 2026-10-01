@@ -5,10 +5,27 @@ import pytest
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
-from app.contracts import SelectionCleared, SelectionConfirmed
+from app.contracts import (
+    CatalogFacet,
+    CatalogPage,
+    SelectionCleared,
+    SelectionConfirmed,
+)
 from app.main import Element, Tour, app
 
 CONTRACTS = Path(__file__).resolve().parents[1] / "contracts"
+
+
+def test_catalog_contracts_and_example_are_canonical():
+    schema = read_json(CONTRACTS / "catalog.v1.schema.json")
+    assert schema == CatalogPage.model_json_schema()
+    assert read_json(CONTRACTS / "catalog-facet.v1.schema.json") == CatalogFacet.model_json_schema()
+    example = read_json(CONTRACTS / "examples/catalog.json")
+    Draft202012Validator(schema).validate(example)
+    CatalogPage.model_validate(example)
+    for mutation in ({"schema_version": True}, {"total": 0}, {"limit": 101}, {"items": example["items"] * 2}):
+        with pytest.raises(ValidationError):
+            CatalogPage.model_validate(example | mutation)
 
 
 def read_json(path: Path):
