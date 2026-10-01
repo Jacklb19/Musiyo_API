@@ -21,6 +21,7 @@ from .db import (
     utc_now,
 )
 from .public_repository import ASSISTANT_ELEMENTS, PublicRepository
+from .resource_storage import configured_s3
 
 
 def upsert(db, table, identity, values):
@@ -97,6 +98,7 @@ def import_package(manifest: Path, database_url=None, dry_run=False, private_sto
     if url.get_backend_name() == "sqlite" and url.database and url.database != ":memory:" and not Path(url.database).is_file():
         raise ValueError("Run musiyo migrate before importing content")
     storage = (private_storage or storage_root()).resolve()
+    object_storage = configured_s3() if not dry_run else None
     now = utc_now()
     if package.decision.decision_date > now.date():
         raise ValueError("Decision date is in the future")
@@ -198,6 +200,10 @@ def import_package(manifest: Path, database_url=None, dry_run=False, private_sto
                         temporary.replace(target)
                     finally:
                         temporary.unlink(missing_ok=True)
+                if object_storage is not None:
+                    resources = {resource.id: resource for item in package.elements for resource in item.record.resources}
+                    for resource_id, (_, _, object_key) in files.items():
+                        object_storage.upload_local(storage / object_key, object_key, resources[resource_id].mime, package.files[resource_id].sha256)
                 db.commit()
         except Exception:
             db.rollback()

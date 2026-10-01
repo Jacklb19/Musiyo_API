@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "url": "/api/v1/resource-delivery/synthetic-resource?expires=1795046700&signature=0000000000000000000000000000000000000000000000000000000000000000",
+  "expires_at": "2026-11-19T00:05:00Z",
+  "mime": "audio/wav",
+  "byte_count": 16044,
+  "sha256": null
+}

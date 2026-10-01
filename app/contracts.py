@@ -187,6 +187,22 @@ class Resource(ContractModel):
     subtitles_resource_id: Identifier | None = None
 
 
+class ResourceAccess(ContractModel):
+    schema_version: Literal[1]
+    url: str = Field(min_length=1)
+    expires_at: datetime
+    mime: str
+    byte_count: int | None = Field(default=None, ge=0)
+    sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def validate_version_type(cls, value):
+        if type(value) is not int:
+            raise ValueError("Schema version must be an integer")
+        return value
+
+
 class LastModified(ContractModel):
     date: datetime
     author: str
@@ -224,7 +240,7 @@ class Problem(ContractModel):
     type: str
     title: str
     status: int
-    code: Literal["not_found", "schema_incompatible", "validation"]
+    code: Literal["not_found", "schema_incompatible", "validation", "service_unavailable"]
     detail: str
 
 

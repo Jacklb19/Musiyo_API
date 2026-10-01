@@ -12,6 +12,7 @@ def generate() -> str:
     roots["ClearedBridge"] = json.loads((CONTRACTS / "bridge-clear.v1.schema.json").read_text(encoding="utf-8"))
     roots["Catalog"] = json.loads((CONTRACTS / "catalog.v1.schema.json").read_text(encoding="utf-8"))
     roots["CatalogFacet"] = json.loads((CONTRACTS / "catalog-facet.v1.schema.json").read_text(encoding="utf-8"))
+    roots["ResourceAccess"] = json.loads((CONTRACTS / "resource-access.v1.schema.json").read_text(encoding="utf-8"))
     models = {}
     for schema in roots.values():
         models.update(schema.get("$defs", {}))

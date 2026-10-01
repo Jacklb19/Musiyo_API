@@ -117,6 +117,9 @@ class PublicRepository:
         return self.db.execute(sa.select(RESOURCES).where(
             RESOURCES.c.id == resource_id, RESOURCES.c.element_id == element_id)).mappings().first()
 
+    def resource_by_id(self, resource_id: str):
+        return self.db.execute(sa.select(RESOURCES).where(RESOURCES.c.id == resource_id)).mappings().first()
+
     def resources(self, element_id: str):
         return self.db.execute(sa.select(RESOURCES).where(RESOURCES.c.element_id == element_id)
             .order_by(RESOURCES.c.id)).mappings().all()
