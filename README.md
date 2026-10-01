@@ -14,6 +14,8 @@ La migración `0003` normaliza fichas, fuentes, categorías, colecciones, recurs
 
 `musiyo import museum-test-data` prepara `museum-main`: seis salas y las 16 anclas de Unity, sin piezas culturales. El prototipo `recorrido-prueba` sigue disponible. Los recorridos retirados no se entregan por API.
 
+Paquetes privados JSON: `musiyo import ruta/manifest.json --dry-run`, luego el mismo comando sin `--dry-run`. Formato en `schemas/content-package.v1.schema.json`. Administración: `revoke --element SLUG --reason MOTIVO` (o `--resource ID`), `withdraw --tour KEY`, `verify-validity`, `reindex`, `create-validator --username USER --name NAME` y `export-state`. `reindex` prepara fragmentos; los embeddings requieren el adaptador de T-50. No ejecuta llamadas a proveedores.
+
 ## Comprobaciones
 
 `ruff check .`, `mypy` y `pytest`. Regenerar contratos con `python -m scripts.build_contracts` y sincronizar con `python -m scripts.sync_contracts`; Web: `npm.cmd run contracts:generate`. No incluir contenido privado ni claves en Git.

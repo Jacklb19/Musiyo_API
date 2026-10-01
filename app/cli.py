@@ -1,10 +1,23 @@
 """Local development commands; no cultural content is generated."""
 import argparse
+import getpass
 import json
 from pathlib import Path
+from typing import Any
 
+from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
+from app.content_operations import (
+    create_validator,
+    export_state,
+    import_package,
+    reindex,
+    revoke,
+    verify_validity,
+    withdraw_tour,
+)
 from app.contracts import Tour
 from app.db import PointRecord, RoomRecord, TourRecord, make_session_factory
 from app.migrations import upgrade_database
@@ -54,17 +67,66 @@ def import_test_data(database_url: str | None = None, dataset: str = "test-data"
     return inserted
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(prog="musiyo")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("migrate")
     importer = commands.add_parser("import")
-    importer.add_argument("dataset", choices=["test-data", "museum-test-data"])
-    args = parser.parse_args()
-    if args.command == "migrate":
-        upgrade_database()
-    else:
-        print(json.dumps(import_test_data(dataset=args.dataset)))
+    importer.add_argument("package", help="test-data, museum-test-data, or a private manifest JSON path")
+    importer.add_argument("--dry-run", action="store_true")
+    revoker = commands.add_parser("revoke")
+    targets = revoker.add_mutually_exclusive_group(required=True)
+    targets.add_argument("--element")
+    targets.add_argument("--resource")
+    revoker.add_argument("--reason", required=True)
+    withdrawal = commands.add_parser("withdraw")
+    withdrawal.add_argument("--tour", required=True)
+    commands.add_parser("verify-validity")
+    indexer = commands.add_parser("reindex")
+    indexer.add_argument("--element")
+    validator = commands.add_parser("create-validator")
+    validator.add_argument("--username", required=True)
+    validator.add_argument("--name", required=True)
+    exporter = commands.add_parser("export-state")
+    exporter.add_argument("--output", type=Path)
+    args = parser.parse_args(argv)
+    result: dict[str, Any]
+    try:
+        if args.command == "migrate":
+            upgrade_database()
+            result = {"migrated": True}
+        elif args.command == "import":
+            if args.package in ("test-data", "museum-test-data"):
+                if args.dry_run:
+                    parser.error("Test datasets do not support --dry-run; use a content package")
+                result = import_test_data(dataset=args.package)
+            else:
+                result = import_package(Path(args.package), dry_run=args.dry_run)
+        elif args.command == "revoke":
+            result = revoke(args.element or args.resource, resource=bool(args.resource), reason=args.reason)
+        elif args.command == "withdraw":
+            result = withdraw_tour(args.tour)
+        elif args.command == "verify-validity":
+            result = verify_validity()
+        elif args.command == "reindex":
+            result = reindex(element_id=args.element)
+        elif args.command == "create-validator":
+            password = getpass.getpass("Password: ")
+            if password != getpass.getpass("Confirm password: "):
+                parser.error("Passwords differ")
+            result = create_validator(args.username, args.name, password)
+        else:
+            result = export_state()
+            if args.output:
+                args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(result, ensure_ascii=False))
+    except ValidationError as error:
+        fields = [".".join(map(str, item["loc"])) for item in error.errors()]
+        parser.exit(2, "Invalid manifest fields: " + ", ".join(fields) + "\n")
+    except SQLAlchemyError:
+        parser.exit(2, "Database operation failed; check migrations and relationships\n")
+    except (ValueError, OSError) as error:
+        parser.exit(2, str(error) + "\n")
 
 
 if __name__ == "__main__":
