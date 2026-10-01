@@ -12,5 +12,6 @@ jobs:
       - run: python -m ruff check app scripts tests migrations
       - run: python -m mypy
       - run: python -m pytest -q
+      - run: python -m scripts.build_import_schema --check
       - run: python -m scripts.build_contracts
       - run: git diff --exit-code -- contracts
