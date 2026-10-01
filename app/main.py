@@ -25,6 +25,7 @@ from .db import (
 )
 from .public_repository import PublicRepository
 from .resource_storage import ACCESS_SECONDS, LocalDelivery, S3Storage, configured_s3
+from .validator_routes import install_validator_routes
 
 
 def create_app(
@@ -33,6 +34,7 @@ def create_app(
     private_storage: Path | None = None,
     resource_signing_key: bytes | None = None,
     object_storage: S3Storage | None = None,
+    web_origin: str | None = None,
 ) -> FastAPI:
     factory = session_factory or make_session_factory()
     storage = (private_storage or storage_root()).resolve()
@@ -40,16 +42,16 @@ def create_app(
     remote_storage = object_storage or configured_s3()
     app = FastAPI(title="Musiyo API", version="1.0.0", responses={
         status: {"model": Problem, "content": {"application/problem+json": {}}}
-        for status in (404, 409, 422, 503)
+        for status in (401, 403, 404, 409, 422, 429, 503)
     })
 
     def problem_response(status: int, detail: str):
-        codes: dict[int, Literal["not_found", "schema_incompatible", "validation", "service_unavailable"]] = {
-            404: "not_found", 409: "schema_incompatible", 503: "service_unavailable"
+        codes: dict[int, Literal["not_found", "schema_incompatible", "validation", "service_unavailable", "unauthenticated", "forbidden", "rate_limited"]] = {
+            401: "unauthenticated", 403: "forbidden", 404: "not_found", 409: "schema_incompatible", 429: "rate_limited", 503: "service_unavailable"
         }
         code = codes.get(status, "validation")
         problem = Problem(type="about:blank", title=detail, status=status, code=code, detail=detail)
-        return JSONResponse(problem.model_dump(), status_code=status, media_type="application/problem+json")
+        return JSONResponse(problem.model_dump(), status_code=status, media_type="application/problem+json", headers={"Cache-Control": "private, no-store"})
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(request, error):
@@ -159,6 +161,7 @@ def create_app(
             raise HTTPException(404, "Recorrido no disponible")
         return tour
 
+    install_validator_routes(app, factory, now, web_origin)
     return app
 
 

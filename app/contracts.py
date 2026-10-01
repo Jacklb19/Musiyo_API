@@ -7,6 +7,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    SecretStr,
     StringConstraints,
     field_validator,
     model_validator,
@@ -203,6 +204,62 @@ class ResourceAccess(ContractModel):
         return value
 
 
+class ValidatorProfile(ContractModel):
+    username: str
+    name: str
+
+
+class ValidatorSession(ContractModel):
+    schema_version: Literal[1]
+    authenticated: bool
+    user: ValidatorProfile | None = None
+    csrf_token: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{43}$")
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def validate_version_type(cls, value):
+        if type(value) is not int:
+            raise ValueError("Schema version must be an integer")
+        return value
+
+    @model_validator(mode="after")
+    def validate_session(self):
+        if self.authenticated != (self.user is not None and bool(self.csrf_token)):
+            raise ValueError("Invalid session state")
+        if not self.authenticated and (self.user is not None or self.csrf_token is not None):
+            raise ValueError("Anonymous sessions cannot expose account metadata")
+        return self
+
+
+class LoginRequest(ContractModel):
+    username: str = Field(min_length=1, max_length=100)
+    password: SecretStr = Field(min_length=1, max_length=1024)
+
+
+class InterpretationCorrection(ContractModel):
+    block_id: Identifier
+    text: str = Field(min_length=1, max_length=3000)
+
+
+class DetailCorrection(ContractModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    description: str | None = Field(default=None, max_length=5000)
+    interpretations: list[InterpretationCorrection] = Field(default_factory=list, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_correction(self):
+        if any(getattr(self, name) is None for name in self.model_fields_set):
+            raise ValueError("Explicit null corrections are not allowed")
+        if self.title is not None and not self.title.strip():
+            raise ValueError("Title cannot be blank")
+        if self.title is None and self.description is None and not self.interpretations:
+            raise ValueError("No corrections provided")
+        ids = [item.block_id for item in self.interpretations]
+        if len(ids) != len(set(ids)) or any(not item.text.strip() for item in self.interpretations):
+            raise ValueError("Repeated or blank interpretation correction")
+        return self
+
+
 class LastModified(ContractModel):
     date: datetime
     author: str
@@ -240,7 +297,7 @@ class Problem(ContractModel):
     type: str
     title: str
     status: int
-    code: Literal["not_found", "schema_incompatible", "validation", "service_unavailable"]
+    code: Literal["not_found", "schema_incompatible", "validation", "service_unavailable", "unauthenticated", "forbidden", "rate_limited"]
     detail: str
 
 

@@ -55,9 +55,14 @@ def content_tables(metadata):
         sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column("failed_attempts", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("locked_until", sa.DateTime(timezone=True)))
-    table("validator_sessions", identity(), reference("validator_id", "validators.id"),
+    table("validator_sessions", sa.Column("id", sa.String(64), primary_key=True), reference("validator_id", "validators.id"),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("csrf_token", sa.Text(), nullable=False))
+    table("validator_login_attempts", identity(), sa.Column("ip_hash", sa.String(64), nullable=False),
+        sa.Column("occurred_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Index("ix_validator_login_ip_time", "ip_hash", "occurred_at"))
+    table("validator_corrections", identity(), reference("validator_id", "validators.id"), reference("element_id", "elements.id"),
+        sa.Column("fields", sa.JSON(), nullable=False), sa.Column("corrected_at", sa.DateTime(timezone=True), nullable=False))
     table("element_metadata", reference("element_id", "elements.id", primary_key=True),
         reference("category_id", "categories.id", nullable=True), reference("community_id", "communities.id", nullable=True),
         sa.Column("kind", sa.String(30), nullable=False, server_default="other"),
