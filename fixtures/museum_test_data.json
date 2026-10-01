@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "tour": {
+    "key": "museum-main",
+    "name": "Musiyo Bëtsknaté"
+  },
+  "rooms": [
+    {
+      "key": "room.arrival",
+      "name": "Llegada",
+      "order": 0,
+      "short_description": "Espacio de prueba sin contenido cultural.",
+      "points": [
+        {
+          "key": "zona.llegada.tutorial",
+          "name": "Punto 1",
+          "order": 0,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        }
+      ]
+    },
+    {
+      "key": "room.welcome",
+      "name": "Bienvenida",
+      "order": 1,
+      "short_description": "Espacio de prueba sin contenido cultural.",
+      "points": [
+        {
+          "key": "punto.bienvenida.mito",
+          "name": "Punto 1",
+          "order": 0,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto.bienvenida.significados",
+          "name": "Punto 2",
+          "order": 1,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        }
+      ]
+    },
+    {
+      "key": "room.characters",
+      "name": "Personajes",
+      "order": 2,
+      "short_description": "Espacio de prueba sin contenido cultural.",
+      "points": [
+        {
+          "key": "punto.personajes.pedestal_1",
+          "name": "Punto 1",
+          "order": 0,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto.personajes.pedestal_2",
+          "name": "Punto 2",
+          "order": 1,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto.personajes.pedestal_3",
+          "name": "Punto 3",
+          "order": 2,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto.personajes.pedestal_4",
+          "name": "Punto 4",
+          "order": 3,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto.personajes.pedestal_5",
+          "name": "Punto 5",
+          "order": 4,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        }
+      ]
+    },
+    {
+      "key": "room.instruments",
+      "name": "Instrumentos y Danza",
+      "order": 3,
+      "short_description": "Espacio de prueba sin contenido cultural.",
+      "points": [
+        {
+          "key": "punto.instrumentos.pedestal_1",
+          "name": "Punto 1",
+          "order": 0,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto.instrumentos.pedestal_2",
+          "name": "Punto 2",
+          "order": 1,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto.instrumentos.pedestal_3",
+          "name": "Punto 3",
+          "order": 2,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto.instrumentos.pedestal_4",
+          "name": "Punto 4",
+          "order": 3,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto.instrumentos.pedestal_5",
+          "name": "Punto 5",
+          "order": 4,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        },
+        {
+          "key": "punto.instrumentos.danza_ocho",
+          "name": "Punto 6",
+          "order": 5,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        }
+      ]
+    },
+    {
+      "key": "room.hearth",
+      "name": "Fogón",
+      "order": 4,
+      "short_description": "Espacio de prueba sin contenido cultural.",
+      "points": [
+        {
+          "key": "guia.principal",
+          "name": "Punto 1",
+          "order": 0,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        }
+      ]
+    },
+    {
+      "key": "room.overlook",
+      "name": "Mirador",
+      "order": 5,
+      "short_description": "Espacio de prueba sin contenido cultural.",
+      "points": [
+        {
+          "key": "punto.mirador.creditos",
+          "name": "Punto 1",
+          "order": 0,
+          "activation": [
+            "proximity",
+            "gaze",
+            "keyboard"
+          ],
+          "elements": []
+        }
+      ]
+    }
+  ],
+  "guide": {
+    "key": "guia.principal",
+    "name": "Guía",
+    "room_key": "room.hearth",
+    "available": false
+  }
+}

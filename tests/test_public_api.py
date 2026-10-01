@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.db import Base, ElementRecord, PointRecord, PointElementRecord, ResourceRecord, RoomRecord
+from app.db import Base, ElementRecord, PointRecord, PointElementRecord, ResourceRecord, RoomRecord, TourRecord
 from app.main import create_app
 
 
@@ -19,6 +19,7 @@ def client_with_data(tmp_path):
     factory = sessionmaker(engine, expire_on_commit=False)
     with factory() as db:
         db.add_all([
+            TourRecord(id="recorrido-prueba", name="recorrido-prueba", published=True),
             ElementRecord(
                 id="visible", title="ElementRecord sintético", description="Solo prueba",
                 interpretation="Interpretación sintética", sources="Fuente sintética", credits="Autor de prueba",

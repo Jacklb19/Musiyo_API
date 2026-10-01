@@ -7,10 +7,10 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from .contracts import Credit, Element, ElementSummary, Health, Point, Problem, Restriction, Room, Source, TextBlock, Tour, TourMetadata
+from .contracts import Credit, Element, ElementSummary, Guide, Health, Point, Problem, Restriction, Room, Source, TextBlock, Tour, TourMetadata
 
 from .db import (
-    ElementRecord, PointRecord, PointElementRecord, ResourceRecord, RoomRecord, is_public_element,
+    ElementRecord, PointRecord, PointElementRecord, ResourceRecord, RoomRecord, TourRecord, is_public_element,
     make_session_factory, is_public_resource, storage_root, utc_now,
 )
 
@@ -109,6 +109,9 @@ def create_app(
     def get_tour(tour_id: str, db: Db, schema_version: int = 1):
         if schema_version != 1:
             raise HTTPException(409, "Versión de contrato incompatible")
+        tour = db.get(TourRecord, tour_id)
+        if tour is None or not tour.published:
+            raise HTTPException(404, "Recorrido no disponible")
         rooms = list(db.scalars(
             select(RoomRecord).where(RoomRecord.tour_id == tour_id).order_by(RoomRecord.order, RoomRecord.id)
         ))
@@ -126,14 +129,15 @@ def create_app(
             ))
             result.append(Room(
                 key=room.id,
-                name=room.id,
+                name=room.name or room.id,
                 order=room.order,
+                short_description=room.short_description,
                 points=[
                     Point(
                         key=point.id,
-                        name=point.id,
+                        name=point.name or point.id,
                         order=point.order,
-                        activation=["keyboard"],
+                        activation=point.activation,
                         elements=[
                             visible_elements[link.element_id] for link in db.scalars(
                                 select(PointElementRecord)
@@ -146,7 +150,11 @@ def create_app(
                     for point in points
                 ],
             ))
-        return Tour(schema_version=1, tour=TourMetadata(key=tour_id, name=tour_id), rooms=result)
+        guide = Guide(key=tour.guide_key, name=tour.guide_name, room_key=tour.guide_room_key,
+                      available=tour.guide_available) if tour.guide_key else None
+        return Tour(schema_version=1,
+                    tour=TourMetadata(key=tour.id, name=tour.name, revision=tour.revision),
+                    rooms=result, guide=guide)
 
     return app
 
