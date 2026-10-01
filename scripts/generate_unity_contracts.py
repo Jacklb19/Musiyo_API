@@ -9,6 +9,7 @@ from scripts.build_contracts import CONTRACTS
 def generate() -> str:
     roots = {name: json.loads((CONTRACTS / f"{name.lower()}.v1.schema.json").read_text(encoding="utf-8"))
              for name in ("Tour", "Element", "Bridge")}
+    roots["ClearedBridge"] = json.loads((CONTRACTS / "bridge-clear.v1.schema.json").read_text(encoding="utf-8"))
     models = {}
     for schema in roots.values():
         models.update(schema.get("$defs", {}))

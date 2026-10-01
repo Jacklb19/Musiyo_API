@@ -5,7 +5,7 @@ from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
 from app.main import Element, Tour, app
-from app.contracts import SelectionConfirmed
+from app.contracts import SelectionConfirmed, SelectionCleared
 import pytest
 
 
@@ -53,6 +53,21 @@ def test_bridge_example_matches_versioned_schema():
     assert schema == SelectionConfirmed.model_json_schema()
     Draft202012Validator(schema).validate(example)
     SelectionConfirmed.model_validate(example)
+
+
+def test_cleared_selection_is_versioned_and_has_no_stale_element():
+    example = read_json(CONTRACTS / "examples" / "selection_cleared.json")
+    schema = read_json(CONTRACTS / "bridge-clear.v1.schema.json")
+    assert schema == SelectionCleared.model_json_schema()
+    Draft202012Validator(schema).validate(example)
+    SelectionCleared.model_validate(example)
+    example["data"]["element_slug"] = "stale"
+    with pytest.raises(ValidationError):
+        SelectionCleared.model_validate(example)
+    example["data"].pop("element_slug")
+    example["version"] = True
+    with pytest.raises(ValidationError):
+        SelectionCleared.model_validate(example)
 
 
 @pytest.mark.parametrize("mutation", ["duplicate_point", "duplicate_element", "unknown_activation", "wrong_type", "boolean_version", "unknown_field"])
