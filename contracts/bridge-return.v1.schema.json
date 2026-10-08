@@ -1,0 +1,50 @@
+{
+  "$defs": {
+    "ClearedSelectionData": {
+      "additionalProperties": false,
+      "properties": {
+        "tour_key": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Tour Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tour_key"
+      ],
+      "title": "ClearedSelectionData",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Unity asks the hosting page to leave the tour; the page decides the navigation.",
+  "properties": {
+    "source": {
+      "const": "musiyo-unity",
+      "title": "Source",
+      "type": "string"
+    },
+    "type": {
+      "const": "return_to_catalog",
+      "title": "Type",
+      "type": "string"
+    },
+    "version": {
+      "const": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "data": {
+      "$ref": "#/$defs/ClearedSelectionData"
+    }
+  },
+  "required": [
+    "source",
+    "type",
+    "version",
+    "data"
+  ],
+  "title": "ReturnToCatalog",
+  "type": "object"
+}
