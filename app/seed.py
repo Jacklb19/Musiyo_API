@@ -1,15 +1,9 @@
-from app.db import Punto, Sala, make_session_factory
+"""Compatibility entry point for the synthetic prototype dataset."""
+from app.cli import import_test_data
 
 
 def main():
-    factory = make_session_factory()
-    with factory() as db:
-        if db.get(Sala, "sala-prueba") is not None:
-            return
-        db.add(Sala(id="sala-prueba", recorrido_id="recorrido-prueba", orden=0))
-        for orden in range(3):
-            db.add(Punto(id=f"punto-0{orden + 1}", sala_id="sala-prueba", orden=orden))
-        db.commit()
+    import_test_data()
 
 
 if __name__ == "__main__":

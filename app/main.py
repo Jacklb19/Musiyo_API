@@ -1,49 +1,57 @@
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from botocore.exceptions import BotoCoreError, ClientError
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from sqlalchemy import select
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session, sessionmaker
-from .contracts import Credit, Element, ElementSummary, Health, Point, Problem, Restriction, Room, Source, TextBlock, Tour, TourMetadata
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .db import (
-    Elemento, Punto, PuntoElemento, Recurso, Sala, elemento_publico,
-    make_session_factory, recurso_publico, storage_root, utc_now,
+from .contracts import (
+    CatalogFacet,
+    CatalogPage,
+    Element,
+    Health,
+    Problem,
+    ResourceAccess,
+    Tour,
 )
-
-
-def public_element(element: Elemento) -> Element:
-    return Element(
-        slug=element.id,
-        title=element.titulo,
-        description=element.descripcion,
-        blocks=[TextBlock(id="legacy-interpretation", kind="interpretation", text=element.interpretacion,
-                         source_id="legacy-source" if element.fuentes else None)] if element.interpretacion else [],
-        credits=[Credit(name=element.creditos)] if element.creditos else [],
-        sources=[Source(id="legacy-source", kind="other", reference=element.fuentes)] if element.fuentes else [],
-        restrictions=[Restriction(kind="other", description=element.restricciones)] if element.restricciones else [],
-    )
+from .db import (
+    make_session_factory,
+    storage_root,
+    utc_now,
+)
+from .public_repository import PublicRepository
+from .resource_storage import ACCESS_SECONDS, LocalDelivery, S3Storage, configured_s3
+from .validator_routes import install_validator_routes
 
 
 def create_app(
     session_factory: sessionmaker | None = None,
     now=utc_now,
     private_storage: Path | None = None,
+    resource_signing_key: bytes | None = None,
+    object_storage: S3Storage | None = None,
+    web_origin: str | None = None,
 ) -> FastAPI:
     factory = session_factory or make_session_factory()
     storage = (private_storage or storage_root()).resolve()
+    local_delivery = LocalDelivery(storage, resource_signing_key)
+    remote_storage = object_storage or configured_s3()
     app = FastAPI(title="Musiyo API", version="1.0.0", responses={
         status: {"model": Problem, "content": {"application/problem+json": {}}}
-        for status in (404, 409, 422)
+        for status in (401, 403, 404, 409, 422, 429, 503)
     })
 
     def problem_response(status: int, detail: str):
-        code = {404: "not_found", 409: "schema_incompatible"}.get(status, "validation")
+        codes: dict[int, Literal["not_found", "schema_incompatible", "validation", "service_unavailable", "unauthenticated", "forbidden", "rate_limited"]] = {
+            401: "unauthenticated", 403: "forbidden", 404: "not_found", 409: "schema_incompatible", 429: "rate_limited", 503: "service_unavailable"
+        }
+        code = codes.get(status, "validation")
         problem = Problem(type="about:blank", title=detail, status=status, code=code, detail=detail)
-        return JSONResponse(problem.model_dump(), status_code=status, media_type="application/problem+json")
+        return JSONResponse(problem.model_dump(), status_code=status, media_type="application/problem+json", headers={"Cache-Control": "private, no-store"})
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(request, error):
@@ -65,42 +73,81 @@ def create_app(
 
     @app.get("/api/v1/elements", response_model=list[Element])
     def list_elements(db: Db):
-        current_time = now()
-        return [
-            public_element(element)
-            for element in db.scalars(select(Elemento).order_by(Elemento.id))
-            if elemento_publico(element, current_time)
-        ]
+        return PublicRepository(db, now).elements()
+
+    @app.get("/api/v1/categories", response_model=list[CatalogFacet])
+    def list_categories(db: Db):
+        return PublicRepository(db, now).facets("categories")
+
+    @app.get("/api/v1/collections", response_model=list[CatalogFacet])
+    def list_collections(db: Db):
+        return PublicRepository(db, now).facets("collections")
+
+    @app.get("/api/v1/catalog", response_model=CatalogPage)
+    def get_catalog(db: Db, query: Annotated[str, Query(max_length=200)] = "",
+                    category: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
+                    collection: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
+                    highlighted: bool = False, limit: Annotated[int, Query(ge=1, le=100)] = 24,
+                    offset: Annotated[int, Query(ge=0, le=100000)] = 0, schema_version: int = 1):
+        if schema_version != 1:
+            raise HTTPException(409, "Versión de contrato incompatible")
+        return PublicRepository(db, now).catalog(query, category, collection, highlighted, limit, offset)
 
     @app.get("/api/v1/elements/{element_id}", response_model=Element)
     def get_element(element_id: str, db: Db):
-        element = db.get(Elemento, element_id)
-        if element is None or not elemento_publico(element, now()):
+        element = PublicRepository(db, now).element(element_id)
+        if element is None:
             raise HTTPException(404, "Contenido no disponible")
-        return public_element(element)
+        return element
 
     @app.get("/api/v1/elements/{element_id}/resources/{resource_id}")
     def get_resource(element_id: str, resource_id: str, db: Db):
-        current_time = now()
-        element = db.get(Elemento, element_id)
-        resource = db.get(Recurso, resource_id)
-        if (
-            element is None or not elemento_publico(element, current_time)
-            or resource is None or resource.elemento_id != element_id
-            or not recurso_publico(resource, current_time)
-        ):
+        resource = PublicRepository(db, now).resource(element_id, resource_id)
+        if resource is None:
             raise HTTPException(404, "Recurso no disponible")
+        access = issue_access(dict(resource))
+        return RedirectResponse(access.url, status_code=307, headers={"Cache-Control": "private, no-store"})
+
+    def issue_access(resource):
+        expires = int(now().timestamp()) + ACCESS_SECONDS
         try:
-            path = (storage / resource.ruta_privada).resolve()
-            path.relative_to(storage)
-        except ValueError:
+            url = (remote_storage or local_delivery).access(resource, expires)
+        except ClientError as error:
+            if str(error.response.get("Error", {}).get("Code")) in ("404", "NoSuchKey", "NotFound"):
+                raise HTTPException(404, "Recurso no disponible")
+            raise HTTPException(503, "El almacenamiento no está disponible")
+        except (BotoCoreError, ValueError):
+            raise HTTPException(503, "El almacenamiento no está disponible")
+        if url is None:
             raise HTTPException(404, "Recurso no disponible")
-        if not path.is_file():
+        return ResourceAccess(schema_version=1, url=url, expires_at=datetime.fromtimestamp(expires, timezone.utc),
+            mime=resource["mime"], byte_count=resource["byte_count"], sha256=resource["sha256"])
+
+    @app.post("/api/v1/resources/{resource_id}/access", response_model=ResourceAccess)
+    def get_resource_access(resource_id: str, db: Db, schema_version: int = 1):
+        if schema_version != 1:
+            raise HTTPException(409, "Versión de contrato incompatible")
+        # resource_by_id reads v_current_resources, not the persistence table.
+        # That view requires a current resource grant and current element/room/point parents.
+        resource = PublicRepository(db, now).resource_by_id(resource_id)
+        if resource is None:
+            raise HTTPException(404, "Recurso no disponible")
+        return JSONResponse(issue_access(dict(resource)).model_dump(mode="json"), headers={"Cache-Control": "private, no-store"})
+
+    @app.get("/api/v1/resource-delivery/{resource_id}")
+    def deliver_resource(resource_id: str, db: Db, expires: int,
+                         signature: Annotated[str, Query(pattern=r"^[a-f0-9]{64}$")]):
+        if not local_delivery.valid(resource_id, expires, signature, now().timestamp()):
+            raise HTTPException(404, "Recurso no disponible")
+        # A valid signature never bypasses the publication view; revocation denies delivery too.
+        resource = PublicRepository(db, now).resource_by_id(resource_id)
+        path = local_delivery.path(dict(resource)) if resource is not None else None
+        if resource is None or path is None:
             raise HTTPException(404, "Recurso no disponible")
         return FileResponse(
             path,
-            media_type=resource.tipo_mime,
-            filename=resource.nombre,
+            media_type=resource["mime"],
+            filename=resource["name"],
             content_disposition_type="inline",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
@@ -109,45 +156,12 @@ def create_app(
     def get_tour(tour_id: str, db: Db, schema_version: int = 1):
         if schema_version != 1:
             raise HTTPException(409, "Versión de contrato incompatible")
-        rooms = list(db.scalars(
-            select(Sala).where(Sala.recorrido_id == tour_id).order_by(Sala.orden, Sala.id)
-        ))
-        if not rooms:
+        tour = PublicRepository(db, now).tour(tour_id)
+        if tour is None:
             raise HTTPException(404, "Recorrido no disponible")
-        current_time = now()
-        visible_elements = {
-            element.id: ElementSummary(slug=element.id, title=element.titulo) for element in db.scalars(select(Elemento))
-            if elemento_publico(element, current_time)
-        }
-        result = []
-        for room in rooms:
-            points = list(db.scalars(
-                select(Punto).where(Punto.sala_id == room.id).order_by(Punto.orden, Punto.id)
-            ))
-            result.append(Room(
-                key=room.id,
-                name=room.id,
-                order=room.orden,
-                points=[
-                    Point(
-                        key=point.id,
-                        name=point.id,
-                        order=point.orden,
-                        activation=["keyboard"],
-                        elements=[
-                            visible_elements[link.elemento_id] for link in db.scalars(
-                                select(PuntoElemento)
-                                .where(PuntoElemento.punto_id == point.id)
-                                .order_by(PuntoElemento.orden, PuntoElemento.elemento_id)
-                            )
-                            if link.elemento_id in visible_elements
-                        ],
-                    )
-                    for point in points
-                ],
-            ))
-        return Tour(schema_version=1, tour=TourMetadata(key=tour_id, name=tour_id), rooms=result)
+        return tour
 
+    install_validator_routes(app, factory, now, web_origin)
     return app
 
 

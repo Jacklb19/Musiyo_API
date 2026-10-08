@@ -1,0 +1,138 @@
+{
+  "$defs": {
+    "CatalogItem": {
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Slug",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "community": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Community"
+        },
+        "thumbnail_resource_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thumbnail Resource Id"
+        },
+        "has_3d_model": {
+          "default": false,
+          "title": "Has 3D Model",
+          "type": "boolean"
+        },
+        "has_narration": {
+          "default": false,
+          "title": "Has Narration",
+          "type": "boolean"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NamedTerm"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "slug",
+        "title",
+        "description"
+      ],
+      "title": "CatalogItem",
+      "type": "object"
+    },
+    "NamedTerm": {
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Slug",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "name"
+      ],
+      "title": "NamedTerm",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/CatalogItem"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "total": {
+      "minimum": 0,
+      "title": "Total",
+      "type": "integer"
+    },
+    "limit": {
+      "maximum": 100,
+      "minimum": 1,
+      "title": "Limit",
+      "type": "integer"
+    },
+    "offset": {
+      "minimum": 0,
+      "title": "Offset",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "items",
+    "total",
+    "limit",
+    "offset"
+  ],
+  "title": "CatalogPage",
+  "type": "object"
+}

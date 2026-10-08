@@ -1,15 +1,55 @@
 import json
 from pathlib import Path
 
+import pytest
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
+from app.contracts import (
+    CatalogFacet,
+    CatalogPage,
+    ResourceAccess,
+    ReturnToCatalog,
+    SelectionCleared,
+    SelectionConfirmed,
+    ValidatorSession,
+)
 from app.main import Element, Tour, app
-from app.contracts import SelectionConfirmed
-import pytest
-
 
 CONTRACTS = Path(__file__).resolve().parents[1] / "contracts"
+
+
+def test_validator_session_contract_rejects_inconsistent_account_state():
+    schema = read_json(CONTRACTS / "validator-session.v1.schema.json")
+    assert schema == ValidatorSession.model_json_schema()
+    example = read_json(CONTRACTS / "examples/validator_session.json")
+    Draft202012Validator(schema).validate(example)
+    ValidatorSession.model_validate(example)
+    for mutation in ({"schema_version":True}, {"user":None}, {"csrf_token":None}, {"authenticated":False}):
+        with pytest.raises(ValidationError):
+            ValidatorSession.model_validate(example | mutation)
+
+
+def test_resource_access_contract_is_canonical_and_versioned():
+    schema = read_json(CONTRACTS / "resource-access.v1.schema.json")
+    assert schema == ResourceAccess.model_json_schema()
+    example = read_json(CONTRACTS / "examples/resource_access.json")
+    Draft202012Validator(schema).validate(example)
+    ResourceAccess.model_validate_json(json.dumps(example))
+    with pytest.raises(ValidationError):
+        ResourceAccess.model_validate_json(json.dumps(example | {"schema_version": True}))
+
+
+def test_catalog_contracts_and_example_are_canonical():
+    schema = read_json(CONTRACTS / "catalog.v1.schema.json")
+    assert schema == CatalogPage.model_json_schema()
+    assert read_json(CONTRACTS / "catalog-facet.v1.schema.json") == CatalogFacet.model_json_schema()
+    example = read_json(CONTRACTS / "examples/catalog.json")
+    Draft202012Validator(schema).validate(example)
+    CatalogPage.model_validate(example)
+    for mutation in ({"schema_version": True}, {"total": 0}, {"limit": 101}, {"items": example["items"] * 2}):
+        with pytest.raises(ValidationError):
+            CatalogPage.model_validate(example | mutation)
 
 
 def read_json(path: Path):
@@ -53,6 +93,35 @@ def test_bridge_example_matches_versioned_schema():
     assert schema == SelectionConfirmed.model_json_schema()
     Draft202012Validator(schema).validate(example)
     SelectionConfirmed.model_validate(example)
+
+
+def test_cleared_selection_is_versioned_and_has_no_stale_element():
+    example = read_json(CONTRACTS / "examples" / "selection_cleared.json")
+    schema = read_json(CONTRACTS / "bridge-clear.v1.schema.json")
+    assert schema == SelectionCleared.model_json_schema()
+    Draft202012Validator(schema).validate(example)
+    SelectionCleared.model_validate(example)
+    example["data"]["element_slug"] = "stale"
+    with pytest.raises(ValidationError):
+        SelectionCleared.model_validate(example)
+    example["data"].pop("element_slug")
+    example["version"] = True
+    with pytest.raises(ValidationError):
+        SelectionCleared.model_validate(example)
+
+
+def test_return_to_catalog_is_versioned_and_distinct_from_selections():
+    example = read_json(CONTRACTS / "examples" / "return_to_catalog.json")
+    schema = read_json(CONTRACTS / "bridge-return.v1.schema.json")
+    assert schema == ReturnToCatalog.model_json_schema()
+    Draft202012Validator(schema).validate(example)
+    ReturnToCatalog.model_validate(example)
+    with pytest.raises(ValidationError):
+        SelectionCleared.model_validate(example)
+    with pytest.raises(ValidationError):
+        ReturnToCatalog.model_validate(example | {"version": True})
+    with pytest.raises(ValidationError):
+        ReturnToCatalog.model_validate(example | {"data": {"tour_key": "museum-main", "point_key": "stale"}})
 
 
 @pytest.mark.parametrize("mutation", ["duplicate_point", "duplicate_element", "unknown_activation", "wrong_type", "boolean_version", "unknown_field"])

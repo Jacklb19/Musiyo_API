@@ -1,0 +1,739 @@
+{
+  "$defs": {
+    "Community": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "people": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "People",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "people"
+      ],
+      "title": "Community",
+      "type": "object"
+    },
+    "Credit": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Credit",
+      "type": "object"
+    },
+    "Element": {
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Slug",
+          "type": "string"
+        },
+        "language": {
+          "const": "es",
+          "default": "es",
+          "title": "Language",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "community": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Community"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "category": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NamedTerm"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "collections": {
+          "items": {
+            "$ref": "#/$defs/NamedTerm"
+          },
+          "title": "Collections",
+          "type": "array"
+        },
+        "technique": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Technique"
+        },
+        "materials": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Materials",
+          "type": "array"
+        },
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/TextBlock"
+          },
+          "title": "Blocks",
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Source"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "credits": {
+          "items": {
+            "$ref": "#/$defs/Credit"
+          },
+          "title": "Credits",
+          "type": "array"
+        },
+        "restrictions": {
+          "items": {
+            "$ref": "#/$defs/Restriction"
+          },
+          "title": "Restrictions",
+          "type": "array"
+        },
+        "resources": {
+          "items": {
+            "$ref": "#/$defs/Resource"
+          },
+          "title": "Resources",
+          "type": "array"
+        },
+        "last_modified": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LastModified"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "slug",
+        "title",
+        "description"
+      ],
+      "title": "Element",
+      "type": "object"
+    },
+    "ImportElement": {
+      "additionalProperties": false,
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/Element"
+        },
+        "kind": {
+          "enum": [
+            "mask",
+            "character",
+            "clothing",
+            "dance",
+            "song",
+            "story",
+            "instrument",
+            "space",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "point_keys": {
+          "items": {
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "type": "string"
+          },
+          "title": "Point Keys",
+          "type": "array"
+        },
+        "allow_assistant": {
+          "default": true,
+          "title": "Allow Assistant",
+          "type": "boolean"
+        },
+        "show_in_tour": {
+          "default": true,
+          "title": "Show In Tour",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "record",
+        "kind"
+      ],
+      "title": "ImportElement",
+      "type": "object"
+    },
+    "ImportFile": {
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "minLength": 1,
+          "title": "File",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "profile": {
+          "default": "general",
+          "enum": [
+            "general",
+            "web",
+            "quest"
+          ],
+          "title": "Profile",
+          "type": "string"
+        },
+        "variant_of": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Variant Of"
+        },
+        "room_key": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Room Key"
+        },
+        "point_key": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Point Key"
+        },
+        "paradata": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Paradata"
+        },
+        "metadata": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metadata"
+        }
+      },
+      "required": [
+        "file",
+        "sha256"
+      ],
+      "title": "ImportFile",
+      "type": "object"
+    },
+    "LastModified": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date-time",
+          "title": "Date",
+          "type": "string"
+        },
+        "author": {
+          "title": "Author",
+          "type": "string"
+        }
+      },
+      "required": [
+        "date",
+        "author"
+      ],
+      "title": "LastModified",
+      "type": "object"
+    },
+    "NamedTerm": {
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Slug",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "name"
+      ],
+      "title": "NamedTerm",
+      "type": "object"
+    },
+    "PublicationDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "reference": {
+          "minLength": 1,
+          "title": "Reference",
+          "type": "string"
+        },
+        "responsible": {
+          "minLength": 1,
+          "title": "Responsible",
+          "type": "string"
+        },
+        "decision_date": {
+          "format": "date",
+          "title": "Decision Date",
+          "type": "string"
+        },
+        "approved_culturally": {
+          "title": "Approved Culturally",
+          "type": "boolean"
+        },
+        "authorized_from": {
+          "format": "date-time",
+          "title": "Authorized From",
+          "type": "string"
+        },
+        "authorized_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorized Until"
+        }
+      },
+      "required": [
+        "reference",
+        "responsible",
+        "decision_date",
+        "approved_culturally",
+        "authorized_from"
+      ],
+      "title": "PublicationDecision",
+      "type": "object"
+    },
+    "Resource": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "model_3d",
+            "image",
+            "audio",
+            "video",
+            "narration",
+            "subtitles"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "mime": {
+          "title": "Mime",
+          "type": "string"
+        },
+        "byte_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Byte Count"
+        },
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Seconds"
+        },
+        "alternative_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alternative Text"
+        },
+        "credit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credit"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provenance"
+        },
+        "variants": {
+          "items": {
+            "$ref": "#/$defs/ResourceVariant"
+          },
+          "title": "Variants",
+          "type": "array"
+        },
+        "transcription": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transcription"
+        },
+        "subtitles_resource_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subtitles Resource Id"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "mime"
+      ],
+      "title": "Resource",
+      "type": "object"
+    },
+    "ResourceVariant": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "profile": {
+          "enum": [
+            "web",
+            "quest"
+          ],
+          "title": "Profile",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "profile"
+      ],
+      "title": "ResourceVariant",
+      "type": "object"
+    },
+    "Restriction": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "no_download",
+            "no_reuse",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "description"
+      ],
+      "title": "Restriction",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "publication",
+            "interview",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "reference": {
+          "title": "Reference",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "reference"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "TextBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "documented_fact",
+            "testimony",
+            "interpretation"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "attribution": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attribution"
+        },
+        "context": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "text"
+      ],
+      "title": "TextBlock",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "manifest_version": {
+      "const": 1,
+      "title": "Manifest Version",
+      "type": "integer"
+    },
+    "decision": {
+      "$ref": "#/$defs/PublicationDecision"
+    },
+    "elements": {
+      "items": {
+        "$ref": "#/$defs/ImportElement"
+      },
+      "minItems": 1,
+      "title": "Elements",
+      "type": "array"
+    },
+    "files": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ImportFile"
+      },
+      "title": "Files",
+      "type": "object"
+    }
+  },
+  "required": [
+    "manifest_version",
+    "decision",
+    "elements"
+  ],
+  "title": "ContentPackage",
+  "type": "object"
+}

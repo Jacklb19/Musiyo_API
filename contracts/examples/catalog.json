@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "slug": "synthetic-item",
+      "title": "[CONTENIDO DE PRUEBA — NO CULTURAL]",
+      "community": null,
+      "thumbnail_resource_id": null,
+      "has_3d_model": false,
+      "has_narration": false,
+      "description": "Descripción sintética para comprobar el catálogo.",
+      "category": { "slug": "test-objects", "name": "Objetos de prueba" }
+    }
+  ],
+  "total": 1,
+  "limit": 24,
+  "offset": 0
+}

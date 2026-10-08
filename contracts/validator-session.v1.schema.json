@@ -1,0 +1,65 @@
+{
+  "$defs": {
+    "ValidatorProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "username": {
+          "title": "Username",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "username",
+        "name"
+      ],
+      "title": "ValidatorProfile",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "authenticated": {
+      "title": "Authenticated",
+      "type": "boolean"
+    },
+    "user": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ValidatorProfile"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "csrf_token": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Csrf Token"
+    }
+  },
+  "required": [
+    "schema_version",
+    "authenticated"
+  ],
+  "title": "ValidatorSession",
+  "type": "object"
+}

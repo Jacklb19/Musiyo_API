@@ -4,73 +4,126 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    create_engine,
+    event,
+)
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+    sessionmaker,
+)
+
+from .contracts import Activation
 
 
 class Base(DeclarativeBase):
     pass
 
 
-class Elemento(Base):
-    __tablename__ = "elementos"
+class ElementRecord(Base):
+    __tablename__ = "elements"
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
-    titulo: Mapped[str] = mapped_column(String(250))
-    descripcion: Mapped[str] = mapped_column(Text)
-    interpretacion: Mapped[str] = mapped_column(Text, default="")
-    estado_aprobacion: Mapped[str] = mapped_column(String(20), default="borrador")
-    aprobado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    autorizado_desde: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    autorizado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    revocado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    creditos: Mapped[str] = mapped_column(Text, default="")
-    fuentes: Mapped[str] = mapped_column(Text, default="")
-    restricciones: Mapped[str] = mapped_column(Text, default="")
-    recursos: Mapped[list[Recurso]] = relationship(back_populates="elemento")
+    title: Mapped[str] = mapped_column(String(250))
+    description: Mapped[str] = mapped_column(Text)
+    interpretation: Mapped[str] = mapped_column(Text, default="")
+    approval_status: Mapped[str] = mapped_column(String(20), default="draft")
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    authorized_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    authorized_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    credits: Mapped[str] = mapped_column(Text, default="")
+    sources: Mapped[str] = mapped_column(Text, default="")
+    restrictions: Mapped[str] = mapped_column(Text, default="")
+    resources: Mapped[list[ResourceRecord]] = relationship(back_populates="element")
 
 
-class Recurso(Base):
-    __tablename__ = "recursos"
-
-    id: Mapped[str] = mapped_column(String(100), primary_key=True)
-    elemento_id: Mapped[str] = mapped_column(ForeignKey("elementos.id"))
-    nombre: Mapped[str] = mapped_column(String(250))
-    tipo_mime: Mapped[str] = mapped_column(String(100))
-    ruta_privada: Mapped[str] = mapped_column(Text)
-    aprobado: Mapped[bool] = mapped_column(Boolean, default=False)
-    autorizado_desde: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    autorizado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    revocado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    elemento: Mapped[Elemento] = relationship(back_populates="recursos")
-
-
-class Sala(Base):
-    __tablename__ = "salas"
+class ResourceRecord(Base):
+    __tablename__ = "resources"
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
-    recorrido_id: Mapped[str] = mapped_column(String(100), index=True)
-    orden: Mapped[int] = mapped_column(Integer)
-    puntos: Mapped[list[Punto]] = relationship(back_populates="sala")
+    element_id: Mapped[str | None] = mapped_column(ForeignKey("elements.id"))
+    name: Mapped[str] = mapped_column(String(250))
+    mime: Mapped[str] = mapped_column(String(100))
+    private_path: Mapped[str] = mapped_column(Text)
+    approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    authorized_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    authorized_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    kind: Mapped[str | None] = mapped_column(String(30))
+    profile: Mapped[str] = mapped_column(String(20), default="general")
+    room_id: Mapped[str | None] = mapped_column(ForeignKey("rooms.id"))
+    point_id: Mapped[str | None] = mapped_column(ForeignKey("points.id"))
+    byte_count: Mapped[int | None] = mapped_column(BigInteger)
+    sha256: Mapped[str | None] = mapped_column(String(64))
+    alternative_text: Mapped[str | None] = mapped_column(Text)
+    transcription: Mapped[str | None] = mapped_column(Text)
+    duration_seconds: Mapped[float | None] = mapped_column(Float)
+    credit: Mapped[str | None] = mapped_column(Text)
+    provenance: Mapped[str | None] = mapped_column(Text)
+    accessibility_adaptation: Mapped[str | None] = mapped_column(Text)
+    paradata: Mapped[dict | None] = mapped_column(JSON)
+    technical_metadata: Mapped[dict | None] = mapped_column("metadata", JSON)
+    variant_of: Mapped[str | None] = mapped_column(ForeignKey("resources.id"))
+    subtitles_resource_id: Mapped[str | None] = mapped_column(ForeignKey("resources.id"))
+    element: Mapped[ElementRecord | None] = relationship(back_populates="resources")
 
 
-class Punto(Base):
-    __tablename__ = "puntos"
+class TourRecord(Base):
+    __tablename__ = "tours"
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
-    sala_id: Mapped[str] = mapped_column(ForeignKey("salas.id"))
-    orden: Mapped[int] = mapped_column(Integer)
-    sala: Mapped[Sala] = relationship(back_populates="puntos")
-    elementos: Mapped[list[PuntoElemento]] = relationship(back_populates="punto")
+    name: Mapped[str] = mapped_column(String(250))
+    published: Mapped[bool] = mapped_column(Boolean, default=False)
+    revision: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    guide_key: Mapped[str | None] = mapped_column(String(100))
+    guide_name: Mapped[str | None] = mapped_column(String(250))
+    guide_room_key: Mapped[str | None] = mapped_column(String(100))
+    guide_available: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
-class PuntoElemento(Base):
-    __tablename__ = "punto_elementos"
+class RoomRecord(Base):
+    __tablename__ = "rooms"
 
-    punto_id: Mapped[str] = mapped_column(ForeignKey("puntos.id"), primary_key=True)
-    elemento_id: Mapped[str] = mapped_column(ForeignKey("elementos.id"), primary_key=True)
-    orden: Mapped[int] = mapped_column(Integer)
-    punto: Mapped[Punto] = relationship(back_populates="elementos")
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    tour_id: Mapped[str] = mapped_column(String(100), index=True)
+    order: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(250), default="")
+    short_description: Mapped[str] = mapped_column(Text, default="")
+    points: Mapped[list[PointRecord]] = relationship(back_populates="room")
+
+
+class PointRecord(Base):
+    __tablename__ = "points"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    room_id: Mapped[str] = mapped_column(ForeignKey("rooms.id"))
+    order: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(250), default="")
+    activation: Mapped[list[Activation]] = mapped_column(JSON, default=lambda: ["keyboard"])
+    room: Mapped[RoomRecord] = relationship(back_populates="points")
+    elements: Mapped[list[PointElementRecord]] = relationship(back_populates="point")
+
+
+class PointElementRecord(Base):
+    __tablename__ = "point_elements"
+
+    point_id: Mapped[str] = mapped_column(ForeignKey("points.id"), primary_key=True)
+    element_id: Mapped[str] = mapped_column(ForeignKey("elements.id"), primary_key=True)
+    order: Mapped[int] = mapped_column(Integer)
+    point: Mapped[PointRecord] = relationship(back_populates="elements")
 
 
 def utc_now() -> datetime:
@@ -83,31 +136,34 @@ def aware(value: datetime | None) -> datetime | None:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
-def vigente(desde: datetime | None, hasta: datetime | None, revocado: datetime | None, ahora: datetime) -> bool:
-    inicio = aware(desde)
-    fin = aware(hasta)
-    return inicio is not None and inicio <= ahora and (fin is None or ahora < fin) and revocado is None
+def is_current(start: datetime | None, end: datetime | None, revoked: datetime | None, now: datetime) -> bool:
+    beginning = aware(start)
+    ending = aware(end)
+    return beginning is not None and beginning <= now and (ending is None or now < ending) and revoked is None
 
 
-def elemento_publico(elemento: Elemento, ahora: datetime) -> bool:
+def is_public_element(element: ElementRecord, now: datetime) -> bool:
     return (
-        elemento.estado_aprobacion == "aprobado"
-        and elemento.aprobado_en is not None
-        and vigente(elemento.autorizado_desde, elemento.autorizado_hasta, elemento.revocado_en, ahora)
+        element.approval_status == "approved"
+        and element.approved_at is not None
+        and is_current(element.authorized_from, element.authorized_until, element.revoked_at, now)
     )
 
 
-def recurso_publico(recurso: Recurso, ahora: datetime) -> bool:
-    return recurso.aprobado and vigente(
-        recurso.autorizado_desde, recurso.autorizado_hasta, recurso.revocado_en, ahora
+def is_public_resource(resource: ResourceRecord, now: datetime) -> bool:
+    return resource.approved and is_current(
+        resource.authorized_from, resource.authorized_until, resource.revoked_at, now
     )
 
 
 def make_session_factory(database_url: str | None = None):
-    url = database_url or os.getenv("MUSIYO_DATABASE_URL", "sqlite:///./musiyo.db")
+    url = database_url or os.getenv("MUSIYO_DATABASE_URL") or "sqlite:///./musiyo.db"
     kwargs = {"connect_args": {"check_same_thread": False}} if url.startswith("sqlite:") else {}
     engine = create_engine(url, **kwargs)
-    Base.metadata.create_all(engine)
+    if engine.dialect.name == "sqlite":
+        @event.listens_for(engine, "connect")
+        def enforce_foreign_keys(connection, record):
+            connection.execute("PRAGMA foreign_keys = ON")
     return sessionmaker(engine, expire_on_commit=False)
 
 

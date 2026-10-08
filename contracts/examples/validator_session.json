@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "authenticated": true,
+  "user": { "username": "test-validator", "name": "Validador sintético" },
+  "csrf_token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+}
