@@ -341,3 +341,19 @@ class SelectionCleared(ContractModel):
         if type(value) is not int:
             raise ValueError("Message version must be an integer")
         return value
+
+
+class ReturnToCatalog(ContractModel):
+    """Unity asks the hosting page to leave the tour; the page decides the navigation."""
+
+    source: Literal["musiyo-unity"]
+    type: Literal["return_to_catalog"]
+    version: Literal[1]
+    data: ClearedSelectionData
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def validate_version_type(cls, value):
+        if type(value) is not int:
+            raise ValueError("Message version must be an integer")
+        return value

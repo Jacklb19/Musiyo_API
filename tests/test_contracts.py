@@ -9,6 +9,7 @@ from app.contracts import (
     CatalogFacet,
     CatalogPage,
     ResourceAccess,
+    ReturnToCatalog,
     SelectionCleared,
     SelectionConfirmed,
     ValidatorSession,
@@ -107,6 +108,20 @@ def test_cleared_selection_is_versioned_and_has_no_stale_element():
     example["version"] = True
     with pytest.raises(ValidationError):
         SelectionCleared.model_validate(example)
+
+
+def test_return_to_catalog_is_versioned_and_distinct_from_selections():
+    example = read_json(CONTRACTS / "examples" / "return_to_catalog.json")
+    schema = read_json(CONTRACTS / "bridge-return.v1.schema.json")
+    assert schema == ReturnToCatalog.model_json_schema()
+    Draft202012Validator(schema).validate(example)
+    ReturnToCatalog.model_validate(example)
+    with pytest.raises(ValidationError):
+        SelectionCleared.model_validate(example)
+    with pytest.raises(ValidationError):
+        ReturnToCatalog.model_validate(example | {"version": True})
+    with pytest.raises(ValidationError):
+        ReturnToCatalog.model_validate(example | {"data": {"tour_key": "museum-main", "point_key": "stale"}})
 
 
 @pytest.mark.parametrize("mutation", ["duplicate_point", "duplicate_element", "unknown_activation", "wrong_type", "boolean_version", "unknown_field"])
