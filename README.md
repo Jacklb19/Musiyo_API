@@ -6,6 +6,8 @@ API pública de Musiyo Bëtsknaté. Python 3.12, PostgreSQL y almacenamiento pri
 
 Instalar `pip install -e ".[dev]"`. Para SQLite: `musiyo migrate`, `musiyo import test-data`, `uvicorn app.main:app --reload`. La API nunca cambia el esquema al importarse.
 
+Para una vista previa existente, `powershell -File scripts/start-local-api.ps1 -DatabasePath <base.db> -StorageRoot <carpeta-privada> -WebOrigin http://localhost:5174 -Port 8002` configura juntos la base SQLite y sus archivos. Las rutas son obligatorias; el script no crea ni migra bases. Una ficha puede existir aunque su archivo falte: el acceso al recurso devolverá 404. Mantén los paquetes culturales y sus bases fuera del repositorio.
+
 Para Docker, copiar `.env.example` a `.env` y completar credenciales locales propias (alfanuméricas para la contraseña de PostgreSQL). Ejecutar `docker compose up --build -d`, luego `docker compose exec api musiyo import test-data`. API: `http://localhost:8000/docs`; MinIO: `http://localhost:9001`. Los volúmenes conservan los datos. El dataset es sintético, sin contenido cultural.
 
 La migración inicial conserva las filas del prototipo y convierte tablas, campos y estados a inglés. Respaldar cualquier base existente antes de migrarla. Un esquema parcial o mezclado se rechaza.
