@@ -1,0 +1,27 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "slug": {
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Slug",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "element_count": {
+      "minimum": 1,
+      "title": "Element Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "slug",
+    "name",
+    "element_count"
+  ],
+  "title": "CatalogFacet",
+  "type": "object"
+}

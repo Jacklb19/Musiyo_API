@@ -1,30 +1,31 @@
 # Musiyo API
 
-API pública de Musiyo Bëtsknaté, desarrollada con FastAPI y SQLAlchemy. La base de datos puede ser PostgreSQL mediante `MUSIYO_DATABASE_URL`; para desarrollo local usa SQLite. El almacenamiento de recursos es privado y está fuera del repositorio.
+API pública de Musiyo Bëtsknaté. Python 3.12, PostgreSQL y almacenamiento privado; contratos canónicos en inglés en `contracts/`.
 
-## Inicio local
+## Desarrollo
 
-1. Crear un entorno Python 3.11+ e instalar: `pip install -e ".[dev]"`.
-2. Crear únicamente la estructura sintética del recorrido: `python -m app.seed`.
-3. Iniciar: `uvicorn app.main:app --reload`.
-4. Abrir `http://127.0.0.1:8000/docs`.
+Instalar `pip install -e ".[dev]"`. Para SQLite: `musiyo migrate`, `musiyo import test-data`, `uvicorn app.main:app --reload`. La API nunca cambia el esquema al importarse.
 
-La API vacía no publica fichas. El seed crea una sala y tres puntos sin elementos. No incluye contenido cultural ni autorizaciones reales. Se puede configurar `MUSIYO_DATABASE_URL` y `MUSIYO_STORAGE_ROOT`; ver `.env.example`. Las variables no se cargan automáticamente desde ese archivo.
+Para una vista previa existente, `powershell -File scripts/start-local-api.ps1 -DatabasePath <base.db> -StorageRoot <carpeta-privada> -WebOrigin http://localhost:5174 -Port 8002` configura juntos la base SQLite y sus archivos. Las rutas son obligatorias; el script no crea ni migra bases. Una ficha puede existir aunque su archivo falte: el acceso al recurso devolverá 404. Mantén los paquetes culturales y sus bases fuera del repositorio.
 
-## Contrato v1
+Para Docker, copiar `.env.example` a `.env` y completar credenciales locales propias (alfanuméricas para la contraseña de PostgreSQL). Ejecutar `docker compose up --build -d`, luego `docker compose exec api musiyo import test-data`. API: `http://localhost:8000/docs`; MinIO: `http://localhost:9001`. Los volúmenes conservan los datos. El dataset es sintético, sin contenido cultural.
 
-- `GET /api/v1/health`
-- `GET /api/v1/elements`
-- `GET /api/v1/elements/{element_id}`
-- `GET /api/v1/elements/{element_id}/resources/{resource_id}`
-- `GET /api/v1/tours/{tour_id}?schema_version=1`
+La migración inicial conserva las filas del prototipo y convierte tablas, campos y estados a inglés. Respaldar cualquier base existente antes de migrarla. Un esquema parcial o mezclado se rechaza.
 
-Los esquemas v1 y ejemplos sintéticos canónicos están en `contracts/`: recorrido (`tour`, `rooms`, `guide`), ficha con bloques tipados y mensaje `selection_confirmed`. Los errores usan `application/problem+json`. La publicación sigue exigiendo aprobación y autorización vigentes.
+La migración `0003` normaliza fichas, fuentes, categorías, colecciones, recursos y autorizaciones. Las consultas públicas usan vistas de vigencia; las claves existentes se conservan. Los datos legados sin autor o acta conocida mantienen esos campos vacíos.
 
-Desde la raíz, ejecutar `python -m scripts.build_contracts` y `python -m scripts.sync_contracts` (o `sh scripts/sync_contracts.sh`) para copiar JSON, hashes SHA-256 y DTO Unity a los repositorios hermanos. Web genera sus tipos con `npm.cmd run contracts:generate`. La persistencia española es legado: los valores desconocidos se entregan vacíos y su migración queda para T-05.
+`musiyo import museum-test-data` prepara `museum-main`: seis salas y las 16 anclas de Unity, sin piezas culturales. El prototipo `recorrido-prueba` sigue disponible. Los recorridos retirados no se entregan por API.
 
-## Pruebas
+Paquetes privados JSON: `musiyo import ruta/manifest.json --dry-run`, luego el mismo comando sin `--dry-run`. Formato en `schemas/content-package.v1.schema.json`. Administración: `revoke --element SLUG --reason MOTIVO` (o `--resource ID`), `withdraw --tour KEY`, `verify-validity`, `reindex`, `create-validator --username USER --name NAME` y `export-state`. `reindex` prepara fragmentos; los embeddings requieren el adaptador de T-50. No ejecuta llamadas a proveedores.
 
-`pytest`
+Cuentas mediante `create-validator` (contraseña solicitada por consola). La API usa sesiones de 8 horas, cookie segura y CSRF para correcciones de texto. Configurar `MUSIYO_WEB_ORIGIN` con el origen exacto de la Web; en producción servir Web/API por HTTPS en el mismo origen.
 
-La persistencia ya admite PostgreSQL, pero aún falta incorporar migraciones Alembic, autenticación del Validador Cultural y un flujo administrativo para registrar aprobaciones verificadas. No se deben insertar materiales culturales reales por fuera de ese flujo.
+## Comprobaciones
+
+Los accesos a archivos duran 300 segundos. `MUSIYO_STORAGE_BACKEND=s3` usa un bucket privado existente; `musiyo configure-storage --web-origin https://tu-web.example` limita su CORS. La importación transfiere archivos solo a MinIO local; para almacenamiento remoto se necesita un flujo autorizado independiente. En local se usa entrega firmada por la API; configurar una `MUSIYO_RESOURCE_SIGNING_KEY` privada común si se ejecutan varios procesos.
+
+`ruff check .`, `mypy` y `pytest`. Regenerar contratos con `python -m scripts.build_contracts` y sincronizar con `python -m scripts.sync_contracts`; Web: `npm.cmd run contracts:generate`. No incluir contenido privado ni claves en Git.
+
+## Coordinación
+
+Código y contratos en inglés; interfaz en español. El contenido y los recursos proceden de API; parámetros y estilos ajustables se centralizan en configuración. Figma es referencia visual, mientras Unity gobierna la visita y sus menús. Narraciones Studio, guía RAG y validación física Quest son tareas pendientes. Ramas `codex/`, commits por tarea y sin push por agentes. En el checkout local, consulta `AGENTS.md` y `.local_docs/REPORT_2026-10-08_HANDOFF.md`; estas notas y el preview externo no se incluyen en Git.
