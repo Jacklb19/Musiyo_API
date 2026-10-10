@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "PresenceData": {
+      "additionalProperties": false,
+      "properties": {
+        "tour_key": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Tour Key",
+          "type": "string"
+        },
+        "point_key": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Point Key",
+          "type": "string"
+        },
+        "element_slug": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Element Slug"
+        },
+        "presence": {
+          "enum": [
+            "near",
+            "away"
+          ],
+          "title": "Presence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tour_key",
+        "point_key",
+        "presence"
+      ],
+      "title": "PresenceData",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Unity reports when the visitor leaves or returns to the active point, using the narration distance rule.",
+  "properties": {
+    "source": {
+      "const": "musiyo-unity",
+      "title": "Source",
+      "type": "string"
+    },
+    "type": {
+      "const": "point_presence",
+      "title": "Type",
+      "type": "string"
+    },
+    "version": {
+      "const": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "data": {
+      "$ref": "#/$defs/PresenceData"
+    }
+  },
+  "required": [
+    "source",
+    "type",
+    "version",
+    "data"
+  ],
+  "title": "PointPresence",
+  "type": "object"
+}
