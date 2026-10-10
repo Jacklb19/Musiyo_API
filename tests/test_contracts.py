@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from app.contracts import (
     CatalogFacet,
     CatalogPage,
+    PointPresence,
     ResourceAccess,
     ReturnToCatalog,
     SelectionCleared,
@@ -122,6 +123,22 @@ def test_return_to_catalog_is_versioned_and_distinct_from_selections():
         ReturnToCatalog.model_validate(example | {"version": True})
     with pytest.raises(ValidationError):
         ReturnToCatalog.model_validate(example | {"data": {"tour_key": "museum-main", "point_key": "stale"}})
+
+
+def test_point_presence_is_versioned_and_limited_to_near_or_away():
+    example = read_json(CONTRACTS / "examples" / "point_presence.json")
+    schema = read_json(CONTRACTS / "bridge-presence.v1.schema.json")
+    assert schema == PointPresence.model_json_schema()
+    Draft202012Validator(schema).validate(example)
+    PointPresence.model_validate(example)
+    PointPresence.model_validate(example | {"data": example["data"] | {"presence": "near", "element_slug": None}})
+    with pytest.raises(ValidationError):
+        SelectionConfirmed.model_validate(example)
+    for mutation in ({"version": True}, {"data": example["data"] | {"presence": "nearby"}},
+                     {"data": {key: value for key, value in example["data"].items() if key != "point_key"}},
+                     {"data": example["data"] | {"distance": 3}}):
+        with pytest.raises(ValidationError):
+            PointPresence.model_validate(example | mutation)
 
 
 @pytest.mark.parametrize("mutation", ["duplicate_point", "duplicate_element", "unknown_activation", "wrong_type", "boolean_version", "unknown_field"])

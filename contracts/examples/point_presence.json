@@ -1,0 +1,11 @@
+{
+  "source": "musiyo-unity",
+  "type": "point_presence",
+  "version": 1,
+  "data": {
+    "tour_key": "tour-test",
+    "point_key": "point-01",
+    "element_slug": "element-01",
+    "presence": "away"
+  }
+}

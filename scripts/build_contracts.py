@@ -7,6 +7,7 @@ from app.contracts import (
     CatalogFacet,
     CatalogPage,
     Element,
+    PointPresence,
     ResourceAccess,
     ReturnToCatalog,
     SelectionCleared,
@@ -31,6 +32,7 @@ def main() -> None:
     write_json(CONTRACTS / "bridge.v1.schema.json", SelectionConfirmed.model_json_schema())
     write_json(CONTRACTS / "bridge-clear.v1.schema.json", SelectionCleared.model_json_schema())
     write_json(CONTRACTS / "bridge-return.v1.schema.json", ReturnToCatalog.model_json_schema())
+    write_json(CONTRACTS / "bridge-presence.v1.schema.json", PointPresence.model_json_schema())
     write_json(CONTRACTS / "catalog.v1.schema.json", CatalogPage.model_json_schema())
     write_json(CONTRACTS / "catalog-facet.v1.schema.json", CatalogFacet.model_json_schema())
     write_json(CONTRACTS / "resource-access.v1.schema.json", ResourceAccess.model_json_schema())

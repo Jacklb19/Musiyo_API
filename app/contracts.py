@@ -357,3 +357,26 @@ class ReturnToCatalog(ContractModel):
         if type(value) is not int:
             raise ValueError("Message version must be an integer")
         return value
+
+
+class PresenceData(ContractModel):
+    tour_key: Identifier
+    point_key: Identifier
+    element_slug: Identifier | None = None
+    presence: Literal["near", "away"]
+
+
+class PointPresence(ContractModel):
+    """Unity reports when the visitor leaves or returns to the active point, using the narration distance rule."""
+
+    source: Literal["musiyo-unity"]
+    type: Literal["point_presence"]
+    version: Literal[1]
+    data: PresenceData
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def validate_version_type(cls, value):
+        if type(value) is not int:
+            raise ValueError("Message version must be an integer")
+        return value
