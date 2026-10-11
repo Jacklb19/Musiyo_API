@@ -58,3 +58,28 @@ cancellation. Catalogue, HTML detail and the existing player remain independent.
 
 No player synchronization, binary distribution, Unity client, cloud provisioning,
 external AI upload, paid plan or voice production is performed by this operation.
+
+Read-only relevance evaluation
+The lexical extractive guide matches limited regular Spanish number inflections
+without changing local-hash-v1 vectors. Identity questions prefer current record
+summaries. Ranking uses authorized passage text/title rather than source/credit
+metadata. Every meaningful question term must match for lexical extraction; partial
+topic overlap cannot infer support for an unmatched qualifier. This can abstain on
+valid synonyms/complex verb forms. It is not a general Spanish language model.
+The separate semantic adapter still uses its model fingerprint/similarity settings.
+
+Keep the explicit question set outside the repository workspace. Its private test
+format is {"schema_version":1,"cases":[{"id":"synthetic-case","request":CANONICAL_GUIDE_QUESTION,"expected_status":"answered","expected_citations":["EXPECTED_SLUG"]}]}.
+Use abstained/provider_unavailable with an empty expected citation list for negatives.
+The request uses the existing canonical GuideQuestion model; it is not a new public
+contract. This internal evaluator uses GuideService directly, without API rate-limit
+traffic, and records identifiers/states/citations/timing without answers or questions.
+It opens the selected SQLite database in URI read-only mode, requires schema 0005,
+refuses in-workspace inputs/outputs and never replaces an existing report.
+
+  .venv/Scripts/python.exe -m scripts.evaluate_guide --database EXTERNAL_DATABASE --guide-config EXTERNAL_GUIDE_JSON --cases EXTERNAL_CASES_JSON --output NEW_EXTERNAL_REPORT
+
+A zero exit status means expected statuses/citation identifiers matched and the
+selected database hash stayed unchanged. It does not prove cultural correctness or
+answer relevance. Review the actual passages in Web. No import, migration, reindex,
+model pull, generative adapter or external upload is part of this evaluation.

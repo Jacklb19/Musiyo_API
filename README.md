@@ -33,3 +33,5 @@ Código y contratos en inglés; interfaz en español. El contenido y los recurso
 Operación reproducible: `deployment/OPERATIONS.txt`, contenedores en `deployment/compose.demo.yml` y propuesta en `deployment/aws-proposal.json`. `python -m scripts.demo` ofrece arranque, salud, parada, respaldo y restauración a una base nueva. AWS queda condicionado a cobertura verificada del plan Free/créditos, aprobación del propietario y USD 0 de gasto propio; no hay recursos provisionados ni materiales enviados a IA externa.
 
 Local API/Web operation: `deployment/LOCAL_SESSION.txt` describes the external shared configuration and `scripts/local-session.ps1` validation, start, health and owned-process stop. Existing API reuse is explicit; startup never changes a database or downloads models.
+
+Read-only guide evaluation: `python -m scripts.evaluate_guide` checks an explicit external question set against a selected external SQLite database. See `deployment/LOCAL_SESSION.txt`; expected statuses/citations do not replace review of answer relevance.
