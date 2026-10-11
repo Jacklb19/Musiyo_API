@@ -21,6 +21,7 @@ from app.content_operations import (
 )
 from app.contracts import Tour
 from app.db import PointRecord, RoomRecord, TourRecord, make_session_factory
+from app.guide_adapters import ProviderUnavailable
 from app.migrations import upgrade_database
 from app.resource_storage import S3Storage
 
@@ -130,6 +131,8 @@ def main(argv=None):
     except ValidationError as error:
         fields = [".".join(map(str, item["loc"])) for item in error.errors()]
         parser.exit(2, "Invalid manifest fields: " + ", ".join(fields) + "\n")
+    except ProviderUnavailable:
+        parser.exit(2, "Local embedding provider unavailable; index transaction was rolled back\n")
     except SQLAlchemyError:
         parser.exit(2, "Database operation failed; check migrations and relationships\n")
     except (BotoCoreError, ClientError):

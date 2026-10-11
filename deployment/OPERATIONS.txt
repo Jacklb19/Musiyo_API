@@ -115,8 +115,8 @@ answer=null, citations=[], reason=insufficient_evidence; provider_unavailable ha
 answer=null, citations=[], reason=provider_unavailable. All three use HTTP 200;
 422, 429 and transport failures are separate. Questions/responses are not retained.
 
-The local adapter uses 1024-dimensional lexical hash vectors and extractive
-quotations. It verifies current records/hashes after generation and never sends
+The default local adapter uses 1024-dimensional lexical hash vectors and extractive
+quotations. Optional local Ollama adapters are described in LOCAL_MODELS.txt. It verifies current records/hashes after generation and never sends
 content externally. It is a pipeline baseline, not validated semantic Spanish RAG.
 Set MUSIYO_GUIDE_GENERATION=disabled to verify provider degradation. Text evidence
 and citations are checked before returning; there is no response cache to invalidate.

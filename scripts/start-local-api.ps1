@@ -2,6 +2,7 @@ param(
     [Parameter(Mandatory = $true)][string]$DatabasePath,
     [Parameter(Mandatory = $true)][string]$StorageRoot,
     [string]$WebOrigin = 'http://localhost:5174',
+    [string]$GuideConfig,
     [ValidateRange(1, 65535)][int]$Port = 8000
 )
 
@@ -19,6 +20,9 @@ if (-not $originUri.IsAbsoluteUri -or $originUri.Scheme -notin 'http', 'https' -
 $pythonPath = Join-Path $apiRoot '.venv/Scripts/python.exe'
 if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) { throw 'Install the API development virtual environment first.' }
 
+if ($GuideConfig) {
+    $env:MUSIYO_GUIDE_CONFIG = (Resolve-Path -LiteralPath $GuideConfig).Path
+}
 $env:MUSIYO_DATABASE_URL = 'sqlite:///' + $databaseFile.Replace('\', '/')
 $env:MUSIYO_STORAGE_ROOT = $resourceDirectory
 $env:MUSIYO_STORAGE_BACKEND = 'local'

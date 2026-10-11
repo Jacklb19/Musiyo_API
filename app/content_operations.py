@@ -259,13 +259,24 @@ def verify_validity(database_url=None):
 
 
 def reindex(database_url=None, element_id=None):
+    from .guide_config import GuideSettings
+    from .guide_providers import configured_embeddings
+    from .guide_repository import index_evidence
+    adapter = configured_embeddings(GuideSettings.from_environment())
     with make_session_factory(database_url).begin() as db:
-        count = reindex_in_session(db, element_id)
-    return {"indexed_fragments": count, "embedding_status": "local", "embedding_model": "local-hash-v1"}
+        count = index_evidence(db, element_id, embeddings=adapter)
+    return {"indexed_fragments": count, "embedding_status": "local", "embedding_model": adapter.model}
 
 
 def reindex_in_session(db, element_id=None, now=utc_now):
+    from .guide_config import GuideSettings
     from .guide_repository import index_evidence
+    if GuideSettings.from_environment().embeddings == "ollama":
+        # Publication/correction must work when the model is down. Remove stale
+        # vectors now; an explicit reindex restores semantic retrieval later.
+        table = CONTENT['index_fragments']
+        db.execute(table.delete().where(table.c.element_id == element_id if element_id else sa.true()))
+        return 0
     return index_evidence(db, element_id, now)
 
 
