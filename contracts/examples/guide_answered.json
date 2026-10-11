@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "status": "answered",
+  "answer": "Texto de una ficha sintética de prueba.",
+  "citations": [
+    {
+      "element_slug": "synthetic-item",
+      "title": "Ficha sintética de prueba"
+    }
+  ],
+  "reason": null
+}

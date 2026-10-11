@@ -6,6 +6,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -23,6 +24,8 @@ from .db import (
     storage_root,
     utc_now,
 )
+from .guide_routes import install_guide_routes
+from .guide_service import GuideService
 from .public_repository import PublicRepository
 from .resource_storage import ACCESS_SECONDS, LocalDelivery, S3Storage, configured_s3
 from .validator_routes import install_validator_routes
@@ -35,6 +38,7 @@ def create_app(
     resource_signing_key: bytes | None = None,
     object_storage: S3Storage | None = None,
     web_origin: str | None = None,
+    guide_service: GuideService | None = None,
 ) -> FastAPI:
     factory = session_factory or make_session_factory()
     storage = (private_storage or storage_root()).resolve()
@@ -69,6 +73,15 @@ def create_app(
 
     @app.get("/api/v1/health", response_model=Health)
     def health():
+        return {"status": "ok"}
+
+    @app.get("/api/v1/ready", response_model=Health)
+    def ready(db: Db):
+        try:
+            if not PublicRepository(db, now).ready():
+                raise HTTPException(503, "La base necesita una migración explícita")
+        except SQLAlchemyError:
+            raise HTTPException(503, "La base no está disponible")
         return {"status": "ok"}
 
     @app.get("/api/v1/elements", response_model=list[Element])
@@ -161,6 +174,7 @@ def create_app(
             raise HTTPException(404, "Recorrido no disponible")
         return tour
 
+    install_guide_routes(app, guide_service or GuideService(factory, now=now))
     install_validator_routes(app, factory, now, web_origin)
     return app
 
