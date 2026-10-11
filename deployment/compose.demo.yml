@@ -1,0 +1,63 @@
+name: musiyo-demo
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg16
+    environment:
+      POSTGRES_DB: musiyo
+      POSTGRES_USER: musiyo
+      POSTGRES_PASSWORD: ${MUSIYO_DB_PASSWORD:?Set an external environment file}
+    volumes: ["database:/var/lib/postgresql/data"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U musiyo -d musiyo"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  storage-init:
+    image: ${MUSIYO_API_IMAGE:-musiyo-api:demo}
+    build: {context: ..}
+    user: "0:0"
+    command: ["python", "-c", "import os; os.chown('/storage', 10001, 10001)"]
+    volumes: ["private-files:/storage"]
+  api:
+    image: ${MUSIYO_API_IMAGE:-musiyo-api:demo}
+    build: {context: ..}
+    environment:
+      MUSIYO_DATABASE_URL: postgresql+psycopg://musiyo:${MUSIYO_DB_PASSWORD}@postgres:5432/${MUSIYO_DB_NAME:-musiyo}
+      MUSIYO_STORAGE_ROOT: /storage
+      MUSIYO_STORAGE_BACKEND: ${MUSIYO_STORAGE_BACKEND:-local}
+      MUSIYO_RESOURCE_SIGNING_KEY: ${MUSIYO_RESOURCE_SIGNING_KEY:?Set a server-only signing key}
+      MUSIYO_WEB_ORIGIN: ${MUSIYO_WEB_ORIGIN:-http://localhost:18080}
+      MUSIYO_GUIDE_GENERATION: ${MUSIYO_GUIDE_GENERATION:-local}
+      MUSIYO_S3_BUCKET: ${MUSIYO_S3_BUCKET:-}
+      MUSIYO_S3_REGION: ${MUSIYO_S3_REGION:-us-east-1}
+      MUSIYO_S3_ENDPOINT: ${MUSIYO_S3_ENDPOINT:-}
+      AWS_EC2_METADATA_SERVICE_ENDPOINT: ${MUSIYO_METADATA_ENDPOINT:-http://169.254.169.254}
+      FORWARDED_ALLOW_IPS: "*"
+    volumes: ["private-files:/storage"]
+    restart: unless-stopped
+    depends_on:
+      postgres: {condition: service_healthy}
+      storage-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/ready')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    logging: {driver: json-file, options: {max-size: "5m", max-file: "2"}}
+  proxy:
+    image: caddy:2.10.2-alpine
+    environment:
+      MUSIYO_DEMO_SITE: ${MUSIYO_DEMO_SITE:-http://localhost}
+      MUSIYO_TRUSTED_PROXY_CIDRS: ${MUSIYO_TRUSTED_PROXY_CIDRS:-127.0.0.1/32}
+    ports: ["${MUSIYO_BIND_ADDRESS:-127.0.0.1}:${MUSIYO_HTTP_PORT:-18080}:80", "${MUSIYO_BIND_ADDRESS:-127.0.0.1}:${MUSIYO_HTTPS_PORT:-18443}:443"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "proxy-data:/data", "proxy-config:/config"]
+    restart: unless-stopped
+    depends_on: {api: {condition: service_healthy}}
+    logging: {driver: json-file, options: {max-size: "5m", max-file: "2"}}
+volumes:
+  database:
+  private-files:
+    name: ${MUSIYO_PRIVATE_VOLUME_NAME:-musiyo-demo_private-files}
+  proxy-data:
+  proxy-config:

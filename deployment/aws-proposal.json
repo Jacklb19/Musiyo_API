@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-10",
+  "state": "not_provisioned",
+  "region": "us-east-1",
+  "own_spend_limit_usd": 0,
+  "plan": "FREE only, when eligible; no Paid upgrade and no unsupported service activation",
+  "account_preconditions": [
+    "Owner creates the eligible account and verifies the actual Free plan, expiration, remaining credits and service coverage.",
+    "Owner approves the concrete CloudFormation resource list and domain before deployment.",
+    "Remain local if eligibility or coverage is unavailable."
+  ],
+  "resources": {
+    "ec2": {
+      "type": "t3.small",
+      "count": 1,
+      "vcpus": 2,
+      "memory_gib": 2,
+      "cpu_credits": "standard",
+      "monthly_hours": 40
+    },
+    "ebs": {
+      "type": "gp3",
+      "gib": 30,
+      "encrypted": true,
+      "persist_when_stopped": true
+    },
+    "public_ipv4": {
+      "type": "one Elastic IP for stable owner-provided HTTPS DNS",
+      "reserved_hours": 730
+    },
+    "s3": {
+      "content_private_gb": 5,
+      "web_artifacts_private_gb": 2,
+      "backup_gb": 3,
+      "versioning": true,
+      "monthly_private_transfer_gb": 4
+    },
+    "cloudfront": {
+      "distribution_count": 1,
+      "mode": "Pay-as-you-go only if covered by Free account credits; no flat-rate plan enrollment",
+      "monthly_transfer_gb": 16,
+      "price_class": "PriceClass_100"
+    },
+    "excluded": [
+      "GPU",
+      "NAT gateway",
+      "load balancer",
+      "RDS duplicate database",
+      "Marketplace products",
+      "domain purchase",
+      "AWS Organizations",
+      "Control Tower",
+      "paid-only services"
+    ]
+  },
+  "rates_usd": {
+    "ec2_per_hour": 0.0209,
+    "gp3_per_gb_month": 0.08,
+    "public_ipv4_per_hour": 0.005,
+    "s3_per_gb_month_planning_allowance": 0.03,
+    "cdn_per_gb_planning_allowance": 0.12,
+    "requests_and_backup_allowance": 1.0
+  },
+  "estimate": {
+    "ec2": 0.836,
+    "ebs": 2.4,
+    "ipv4": 3.65,
+    "s3": 0.3,
+    "cdn_allowance": 1.92,
+    "requests_allowance": 1.0,
+    "total_credits_per_month_planning": 10.586,
+    "six_months_credits_planning": 63.516,
+    "own_spend_usd": 0,
+    "notes": "Conservative usage scenario before free allowances; S3/CDN/request lines are planning allowances, not quoted tariffs. Traffic is 16 GB CDN plus 4 GB direct private content. Shared credit consumption and actual account eligibility still require verification.",
+    "private_content_transfer_allowance": 0.48
+  },
+  "stop_behavior": "Compute stops; retained EBS, Elastic IP, stored object versions and CDN traffic continue consuming eligible credits.",
+  "expiry_policy": "Export and verify local database/files before credit depletion or account closure. Free account closure can remove access to resources/data; retain at least two local copies.",
+  "models": {
+    "current_embeddings": "local-hash-v1, 1024 dimensions; lexical baseline, no semantic quality claim",
+    "current_generation": "local extractive quotations, no external provider",
+    "future_candidates": [
+      "Amazon Titan Text Embeddings V2 (1024 dimensions)",
+      "Amazon Nova Micro, text only"
+    ],
+    "external_processing": "pending owner authorization; model quality in Spanish, region, credit coverage, prices and provider data conditions must be verified before enabling. No provider invocation permissions in the instance role."
+  },
+  "sources": {
+    "free_plan": "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html",
+    "account_state": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_freetier_GetAccountPlanState.html",
+    "ec2": "https://aws.amazon.com/ec2/instance-types/t3/",
+    "ebs": "https://aws.amazon.com/ebs/volume-types/",
+    "ipv4": "https://aws.amazon.com/vpc/pricing/",
+    "s3": "https://aws.amazon.com/s3/pricing/",
+    "cloudfront": "https://aws.amazon.com/cloudfront/pricing/",
+    "flat_rate_restriction": "https://docs.aws.amazon.com/pdfs/PricingPlanManager/latest/UserGuide/pricingplanmanager-ug.pdf",
+    "embedding_candidate": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-titan-text-embeddings-v2.html",
+    "generation_candidates": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards-amazon.html",
+    "ec2_free_eligibility": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-free-tier-usage.html"
+  }
+}

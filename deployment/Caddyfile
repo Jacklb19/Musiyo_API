@@ -1,0 +1,20 @@
+{
+    servers {
+        trusted_proxies static {$MUSIYO_TRUSTED_PROXY_CIDRS}
+        trusted_proxies_strict
+    }
+}
+{$MUSIYO_DEMO_SITE} {
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+    handle /api/* {
+        reverse_proxy api:8000 {
+            header_up X-Forwarded-For {client_ip}
+        }
+    }
+    handle {
+        respond "Not found" 404
+    }
+}

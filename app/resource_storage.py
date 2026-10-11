@@ -51,19 +51,19 @@ class S3Storage:
         endpoint = os.getenv("MUSIYO_S3_ENDPOINT", "")
         key, secret = os.getenv("MUSIYO_S3_ACCESS_KEY"), os.getenv("MUSIYO_S3_SECRET_KEY")
         bucket = os.getenv("MUSIYO_S3_BUCKET", "")
-        if not endpoint or not key or not secret or not bucket:
-            raise ValueError("S3 endpoint, bucket and credentials must be configured")
-        if urlsplit(endpoint).scheme not in ("https", "http"):
+        if not bucket or bool(key) != bool(secret):
+            raise ValueError("S3 requires a bucket and either paired explicit credentials or the SDK credential chain")
+        if endpoint and urlsplit(endpoint).scheme not in ("https", "http"):
             raise ValueError("Invalid S3 endpoint")
+
         def connect(url):
-            if urlsplit(url).scheme not in ("https", "http"):
+            if url and urlsplit(url).scheme not in ("https", "http"):
                 raise ValueError("Invalid S3 endpoint")
-            return boto3.client("s3", endpoint_url=url,
-            aws_access_key_id=key, aws_secret_access_key=secret,
-            region_name=os.getenv("MUSIYO_S3_REGION", "us-east-1"),
-            config=Config(signature_version="s3v4", s3={"addressing_style": "path"},
-                proxies={},
-                connect_timeout=3, read_timeout=5, retries={"max_attempts": 1}))
+            credentials = {"aws_access_key_id": key, "aws_secret_access_key": secret} if key else {}
+            return boto3.client("s3", endpoint_url=url or None, **credentials,
+                region_name=os.getenv("MUSIYO_S3_REGION", "us-east-1"),
+                config=Config(signature_version="s3v4", s3={"addressing_style": "path" if url else "virtual"},
+                    connect_timeout=3, read_timeout=5, retries={"max_attempts": 1}))
         client = connect(endpoint)
         signer = connect(os.getenv("MUSIYO_S3_PUBLIC_ENDPOINT", endpoint))
         return cls(client, bucket, signer)

@@ -35,3 +35,6 @@ Thumbs.db
 # Solo README.md se versiona como documento Markdown
 *.[mM][dD]
 !/README.md
+
+# Local notes and contract handoff artifacts
+.local_docs/
