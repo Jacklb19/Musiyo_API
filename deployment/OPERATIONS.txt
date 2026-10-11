@@ -134,3 +134,8 @@ Schemas/examples in contracts/ are canonical. The API generator also emits the n
 Unity wire fields. The prepared .local_docs/guide-contract-20261010 bundle is for
 its responsible maintainer to integrate and validate. Do not run --target unity or
 the default all-target sync while another owner is editing the Unity checkout.
+
+Guide throttling: HTTP 429 keeps the Problem body and private/no-store caching.
+It includes Retry-After: 60 (seconds), a conservative cooldown for the one-minute
+window. Clients may retain the question for a manual retry; do not auto-resubmit.
+The three guide v1 HTTP 200 outcomes and canonical JSON schemas are unchanged.
