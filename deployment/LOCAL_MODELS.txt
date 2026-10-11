@@ -15,6 +15,10 @@ The development evaluation uses Ollama 0.40.2 and explicitly tagged models:
   qwen3:4b             (generation, Q4_K_M)
   qwen3-embedding:0.6b (retrieval, 1024 dimensions)
 These are evaluation candidates, not a guarantee of Spanish answer quality or speed.
+The first 0.6b generation trial failed the ten-second deadline and confused the
+celebration with the museum prototype. It is not accepted for visitor responses.
+Keep the extractive baseline until a larger candidate passes factual review.
+Qwen Embedding 0.6b returned 1024 dimensions; 56 local fragments indexed in 14.67s.
 
 Start a private, local-only server with PowerShell:
   ./scripts/local-model.ps1 -Action start -RuntimeDirectory EXTERNAL_RUNTIME -ModelsDirectory EXTERNAL_MODELS

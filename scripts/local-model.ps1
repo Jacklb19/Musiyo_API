@@ -30,7 +30,8 @@ if ($Action -eq 'stop') {
     $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
     $ownedProcess = Get-Process -Id $state.process_id -ErrorAction SilentlyContinue
     if ($ownedProcess) {
-        if ($ownedProcess.Path -ne $executable -or $ownedProcess.StartTime.ToUniversalTime().ToString('o') -ne $state.started_at) {
+        $recordedStart = ([DateTimeOffset]$state.started_at).UtcDateTime
+        if ($ownedProcess.Path -ne $executable -or $ownedProcess.StartTime.ToUniversalTime() -ne $recordedStart) {
             throw 'Process identity changed; no process was stopped.'
         }
         try {
