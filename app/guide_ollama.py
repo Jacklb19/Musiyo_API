@@ -137,12 +137,16 @@ class OllamaGeneration:
         if digest is None:
             raise ValueError("Generation digest is required")
         self.transport.verify(self.settings.ollama_generation_model, digest, deadline)
-        context = [{"fragment_id": item.fragment_id, "title": item.title, "kind": item.kind,
+        references = {f"E{index + 1}": item.fragment_id for index, item in enumerate(evidence)}
+        context = [{"fragment_id": reference, "title": item.title, "kind": item.kind,
                     "community": item.community, "text": item.text, "attribution": item.attribution,
-                    "context": item.context, "source_reference": item.source_reference} for item in evidence]
+                    "context": item.context, "source_reference": item.source_reference}
+                   for reference, item in zip(references, evidence, strict=True)]
+        schema = ModelAnswer.model_json_schema()
+        schema["properties"]["fragment_ids"]["items"] = {"type": "string", "enum": list(references)}
         result = self.transport.request("/api/chat", {
             "model": self.settings.ollama_generation_model, "stream": False, "think": False,
-            "format": ModelAnswer.model_json_schema(), "keep_alive": "5m",
+            "format": schema, "keep_alive": "5m",
             "options": {"temperature": 0, "num_ctx": self.settings.ollama_context_tokens,
                         "num_predict": self.settings.ollama_output_tokens},
             "messages": [{"role": "system", "content": SYSTEM_INSTRUCTIONS},
@@ -155,4 +159,7 @@ class OllamaGeneration:
             output = ModelAnswer.model_validate_json(message["content"])
         except ValidationError as error:
             raise ProviderUnavailable("Local generation violates its schema") from error
-        return GeneratedAnswer(output.sufficient, output.answer, tuple(output.fragment_ids))
+        if any(reference not in references for reference in output.fragment_ids):
+            return GeneratedAnswer(False, "", ())
+        return GeneratedAnswer(output.sufficient, output.answer,
+                               tuple(references[reference] for reference in output.fragment_ids))
