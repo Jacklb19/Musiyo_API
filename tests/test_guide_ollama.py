@@ -226,3 +226,17 @@ def test_external_configuration_is_validated_and_environment_can_override(tmp_pa
     path.write_text('{"ollama_url":"http://example.com:11434"}', encoding='utf-8')
     with pytest.raises(ValidationError):
         GuideSettings.from_environment()
+
+
+
+def test_generation_uses_only_supplied_short_references_and_maps_current_ids(guide):
+    evidence = evidence_for(guide)
+    payload = {'sufficient': True, 'answer': 'Respuesta de prueba.', 'fragment_ids': ['E1']}
+    transport = FakeTransport({'done': True, 'message': {'content': json.dumps(payload)}})
+    result = OllamaGeneration(settings(), transport).generate(question().question, evidence)
+    assert result.fragment_ids == (evidence[0].fragment_id,)
+    request = transport.requests[0][1]
+    allowed = request['format']['properties']['fragment_ids']['items']['enum']
+    assert allowed == [f'E{index + 1}' for index in range(len(evidence))]
+    supplied = json.loads(request['messages'][1]['content'])['evidence']
+    assert supplied[0]['fragment_id'] == 'E1'
