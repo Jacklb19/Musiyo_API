@@ -83,11 +83,12 @@
     "selected_local_trial": {
       "runtime": "Ollama, local-only mode",
       "embedding_model": "qwen3-embedding:0.6b, 1024 dimensions; installed digest pinned in external configuration",
-      "generation_model": "qwen3:4b, Q4_K_M; installed digest pinned in external configuration",
+      "generation_model": "qwen3:4b, Q4_K_M candidate; download partial, not installed or accepted",
       "host": "Owner Windows PC with RTX 4060 Laptop 8 GiB; not the proposed t3.small API host",
-      "state": "adapters verified; real model quality and latency evaluation in progress",
+      "state": "local adapters verified; Qwen Embedding installed; 0.6b generation trial rejected for factual conflation and ten-second timeouts; extractive baseline retained",
       "networking": "Native API and model remain on the PC during local development. Any AWS-to-PC connectivity requires a concrete secure delivery design and owner approval; no public model port.",
-      "availability": "Requires inference PC awake and reachable. This is not continuous hosting."
+      "availability": "Requires inference PC awake and reachable. This is not continuous hosting.",
+      "small_model_trial": "qwen3:0.6b installed only for evaluation; not activated as visitor guide"
     },
     "prerecorded_narration": "ElevenLabs Studio, exported audio files; provider upload and quotas must be handled separately",
     "dynamic_voice": "Future backend ElevenLabs Text-to-Speech API, not Studio projects; processing permission and quota coverage pending",
