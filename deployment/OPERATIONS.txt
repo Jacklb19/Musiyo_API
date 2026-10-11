@@ -1,0 +1,136 @@
+MUSIYO LOCAL AND AWS DEMONSTRATION OPERATIONS
+
+Current boundary
+---------------
+The owner requires USD 0 own spend. Local development is enabled. AWS templates
+are proposals only. No account upgrade, provisioning, provider invocation or
+cultural upload is authorized by these files. The owner creates an eligible
+Free account and approves actual resources/credit coverage before deployment.
+The Free account can close after six months or credit exhaustion; keep verified
+database and object exports on local storage before either event.
+
+Local container verification
+----------------------------
+Run from the API repository using its Python environment. Select paths outside
+all repositories; never copy cultural data or environment files into source.
+
+python -m scripts.demo create-env --env-file <external-folder>/demo.env
+python -m scripts.demo migrate --env-file <external-folder>/demo.env
+python -m scripts.demo start --env-file <external-folder>/demo.env
+python -m scripts.demo health --env-file <external-folder>/demo.env
+python -m scripts.demo stop --env-file <external-folder>/demo.env
+
+The migrate command is a separate, explicit operation. Start builds the pinned
+image and starts PostgreSQL/API/proxy without changing the schema. Importing the API or starting
+the API container never migrates a database. Default proxy: http://localhost:18080.
+Database ports are not published. Only one API worker is configured; the bounded
+question limiter is per worker and resets on process restart. A future multiworker
+or multi-instance deployment needs a shared limiter before scaling.
+
+Import synthetic fixtures using docker compose with the same external environment
+file and deployment/compose.demo.yml: exec api musiyo import test-data.
+Approved cultural manifests require explicit selection and a separate authorized
+import. Directory discovery never confers permission. Reimport indexes only the
+selected records; restrictions, deny grants and revocations still take precedence.
+
+Backup and restore
+------------------
+python -m scripts.demo backup --env-file <external-folder>/demo.env --backup-folder <external-backup-folder>
+python -m scripts.demo restore --env-file <external-folder>/demo.env --backup-manifest <external-backup-folder>/musiyo-<timestamp>.json --restore-database musiyo_restore_<unique_suffix>
+
+Backup briefly stops API/proxy writes, dumps the selected database, archives the
+local private volume, records hashes and resumes the services. Retain 14 daily
+backups on external storage and a second offline copy. Restore validates hashes,
+creates a new database and a fresh private volume. It never replaces the selected
+live database. Inspect the restored records and permissions before updating the
+external environment/volume selection: set MUSIYO_DB_NAME to the new database
+and MUSIYO_PRIVATE_VOLUME_NAME to the returned volume, then run start and health. Remote S3 content is not inside the local
+volume archive: preserve object versions plus the external manifests/originals
+with a separately authorized offline export before Free-account closure.
+
+AWS resource proposal and deployment prerequisites
+-------------------------------------------------
+Read aws-proposal.json and both CloudFormation resource lists (the Web template
+is in Musiyo_Web/deployment/static-site.cloudformation.json). The conservative
+40-hour scenario consumes about USD 10.59 in credits per month before allowances;
+this is not a promise of permanent free hosting or demonstrated capacity.
+
+1. Owner verifies the account is eligible for Free plan, ACTIVE, with USD credits,
+   expiration and coverage for EC2/EBS, Elastic IP, S3 and CloudFront/function/IAM.
+   Do not enroll in a CloudFront flat-rate plan: its eligibility differs from the
+   AWS Free account plan. Remain local if a required service is unavailable.
+2. Owner resolves an exact Amazon Linux 2023 x86_64 AMI and the us-east-1 managed
+   CloudFront origin-facing prefix list. Record both in the resource approval.
+   Review retaining EBS/buckets/instance and the ongoing Elastic IP credit cost.
+3. Owner supplies an existing controlled API DNS hostname. No domain purchase,
+   hosted zone, NAT, GPU, load balancer, duplicate database or paid-only activation
+   is included. The templates use the default CloudFront HTTPS hostname for Web.
+4. Owner applies the reviewed foundation template, associates the existing DNS
+   hostname to its Elastic IP, and installs a verified Docker Compose v2 CLI plugin
+   on the instance (the bootstrap installs Docker only). Transfer the exact API
+   source/image and deployment files through an owner-approved SSM/S3 workflow.
+   Never run cultural import/upload as part of bootstrap.
+5. Put a server-only external environment file on the instance with mode 0600.
+   Set MUSIYO_DEMO_SITE to the API hostname, MUSIYO_BIND_ADDRESS=0.0.0.0,
+   MUSIYO_HTTP_PORT=80 and MUSIYO_HTTPS_PORT=443. Configure Caddy trusted proxy
+   CIDRs from the managed CloudFront list; Caddy replaces X-Forwarded-For with the
+   verified client IP. No API/database port is exposed to the host/public.
+6. Run migrate explicitly for initial setup, then start on that instance and verify HTTPS readiness.
+   Apply the Web template only after its exact resource coverage is approved.
+   Set MUSIYO_WEB_ORIGIN to its Web URL and restart API. The Web /api/* behavior
+   uses the HTTPS API origin, forwards cookies/query/CSRF and disables caching.
+7. Use MUSIYO_STORAGE_BACKEND=s3, MUSIYO_S3_BUCKET and MUSIYO_S3_REGION with the
+   SDK role chain. Omit custom endpoint/access/secret keys on EC2. IMDSv2 is required
+   with hop limit 2 for containers. The runtime role can only read its content bucket;
+   it cannot invoke AI models or upload content. Configure bucket CORS only as an
+   explicitly authorized administrative action for the exact Web origin.
+8. Publish only the verified static artifact manifest from Web after owner approval.
+   Never advertise a Windows/Quest download before a built, checked delivery exists.
+
+Instance sessions
+-----------------
+Prepare an EXTERNAL approval JSON containing owner_approved=true, responsible,
+own_spend_limit_usd=0, eligible_services_verified=true, account_id, region=us-east-1,
+instance_type=t3.small, instance_id and minimum_remaining_credits_usd=20. This
+records an actual owner decision; do not manufacture it from this proposal.
+
+python -m scripts.aws_demo status --approval <external-approval.json>
+python -m scripts.aws_demo start --approval <external-approval.json>
+python -m scripts.aws_demo stop --approval <external-approval.json>
+
+Start checks the actual account plan and credit balance, SDK account identity,
+instance type and project tag. It refuses Paid, expired or unknown states. Stop
+remains available to shut down the approved instance after expiration. These
+commands request transitions; run health after boot to establish readiness. Stopping
+compute retains storage/IP/object costs against credits. Export before depletion.
+There is no provisioning or account-upgrade command in these scripts.
+
+Guide contract and provider boundary
+------------------------------------
+POST /api/v1/guide/questions is the owner-approved additive v1 contract. Request:
+schema_version=1, question (3..500 trimmed characters), optional/null element_slug.
+Response: schema_version, status, answer, citations [{element_slug,title}], reason.
+answered requires an answer and current citation(s), reason=null; abstained has
+answer=null, citations=[], reason=insufficient_evidence; provider_unavailable has
+answer=null, citations=[], reason=provider_unavailable. All three use HTTP 200;
+422, 429 and transport failures are separate. Questions/responses are not retained.
+
+The local adapter uses 1024-dimensional lexical hash vectors and extractive
+quotations. It verifies current records/hashes after generation and never sends
+content externally. It is a pipeline baseline, not validated semantic Spanish RAG.
+Set MUSIYO_GUIDE_GENERATION=disabled to verify provider degradation. Text evidence
+and citations are checked before returning; there is no response cache to invalidate.
+A change of embedding model requires explicit reindexing; dimension changes need a
+coordinated migration. External models, Spanish evaluation, quota, credit eligibility,
+data handling and owner processing consent remain separate decisions. Voice follows
+text and is not part of this delivery.
+
+Contract export without modifying Unity
+---------------------------------------
+python -m scripts.build_contracts
+python -m scripts.sync_contracts --target web
+
+Schemas/examples in contracts/ are canonical. The API generator also emits the new
+Unity wire fields. The prepared .local_docs/guide-contract-20261010 bundle is for
+its responsible maintainer to integrate and validate. Do not run --target unity or
+the default all-target sync while another owner is editing the Unity checkout.

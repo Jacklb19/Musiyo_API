@@ -6,3 +6,4 @@
 !migrations/**
 !fixtures/**
 !alembic.ini
+!requirements.runtime.txt
