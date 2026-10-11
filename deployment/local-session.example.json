@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "database_path": "preview/museum.db",
+  "storage_root": "preview/private",
+  "guide_config": "extractive-settings.json",
+  "api_origin": "http://127.0.0.1:8000",
+  "web_origin": "http://localhost:5174",
+  "web_root": "PATH_TO_WEB_CHECKOUT",
+  "state_directory": "session",
+  "reuse_existing_api": false
+}

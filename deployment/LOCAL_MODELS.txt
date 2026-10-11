@@ -1,8 +1,9 @@
 LOCAL TEXTUAL GUIDE - WINDOWS / OLLAMA
 
 Scope
-Qwen generates textual answers from current authorized evidence. Qwen Embedding
-replaces the deterministic lexical vectors. The public guide v1 wire contract is
+The accepted visitor baseline is local extractive generation with lexical retrieval.
+Qwen Embedding is a separately evaluated retrieval adapter on an external database
+copy; its availability does not establish accepted free-form generation. The public guide v1 wire contract is
 unchanged. ElevenLabs Studio produces prerecorded narrations separately. Dynamic
 voice would use backend TTS later; no ElevenLabs upload or paid service is enabled.
 
@@ -28,24 +29,21 @@ Health and stop use the same arguments with -Action health / -Action stop. Stop
 checks process identity and retains models. No questions or prompts are logged by
 Musiyo. Do not expose the raw model port to Web, Quest or the public Internet.
 
-Download only the selected models, using the explicit portable executable:
-  $env:OLLAMA_HOST = '127.0.0.1:11434'
-  & EXTERNAL_RUNTIME/ollama.exe pull qwen3-embedding:0.6b
-  & EXTERNAL_RUNTIME/ollama.exe pull qwen3:4b
-Downloads fetch model weights, not cultural content. Avoid :latest / :cloud tags.
+This session does not download models. The existing Qwen Embedding 0.6b can be used
+only after confirming its installed digest against the selected index. Qwen generation
+0.6b is rejected; Qwen 4b partial data stays paused. A future download/evaluation is a
+separate owner decision, never part of session start/health/stop.
 Inspect GET http://127.0.0.1:11434/api/tags for each installed name and 64-hex digest.
 
 Configuration
 Create an external JSON file with these settings; replace placeholders with the
-installed digests, without 'sha256:' prefixes:
+installed embedding digest, without 'sha256:' prefixes:
   {
     "embeddings": "ollama",
-    "generation": "ollama",
+    "generation": "local",
     "ollama_url": "http://127.0.0.1:11434",
     "ollama_embedding_model": "qwen3-embedding:0.6b",
-    "ollama_generation_model": "qwen3:4b",
     "ollama_embedding_digest": "INSTALLED_EMBEDDING_DIGEST",
-    "ollama_generation_digest": "INSTALLED_GENERATION_DIGEST",
     "ollama_timeout_seconds": 10,
     "minimum_similarity": 0.7
   }

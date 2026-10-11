@@ -1,0 +1,60 @@
+LOCAL API / WEB SESSION — WINDOWS
+
+One external JSON file selects the existing SQLite database, matching private
+storage, guide configuration, API origin, Web origin, Web checkout and process
+state directory. Copy deployment/local-session.example.json outside all repos and
+replace its placeholders. Relative paths resolve beside that configuration file.
+Use a separate external guide JSON: {"generation":"local","embeddings":"local"}.
+This selects the accepted lexical/extractive baseline. The main preview already
+has this index. No migration, import, model download or reindex runs at startup.
+
+From the API checkout, in PowerShell with its .venv and the Web node_modules ready:
+  ./scripts/local-session.ps1 -Action validate -Config EXTERNAL_SESSION_JSON
+  ./scripts/local-session.ps1 -Action start -Config EXTERNAL_SESSION_JSON
+  ./scripts/local-session.ps1 -Action health -Config EXTERNAL_SESSION_JSON
+  ./scripts/local-session.ps1 -Action stop -Config EXTERNAL_SESSION_JSON
+
+Validate checks paths, local origins, guide settings and selected schema in read
+only mode. Start reuses scripts/start-local-api.ps1 for an owned API and launches
+the installed Vite executable after the existing model-decoder predev step. It sets MUSIYO_DEV_API_TARGET in that process so it
+wins over an old .env.local. Browser requests remain same-origin /api/v1. The native
+base is the same api_origin plus /api/v1. This is a development operation, not a
+public or native Unity runtime configuration implementation.
+
+Health checks API and proxy health/readiness, selected current catalogue slugs and
+museum-main. It does not treat guide.available as provider readiness. Test a guide
+question separately. When adapting this launcher to another published tour, change
+its explicit museum-main readiness check coherently.
+
+Occupied ports cause refusal. To share a pre-existing API that the owner/Unity
+still uses, first verify its process, selected database, storage and adapter setup,
+then explicitly set reuse_existing_api=true. The session cannot read another
+process's environment; catalogue equality is a useful check, not proof of identical
+storage or guide configuration. Reused API is never stopped or reconfigured. When
+it is absent, start refuses; after reviewing availability, set reuse_existing_api
+back to false to launch the selected API. Before starting a new 8000 service after
+reboot, inspect ports/processes again. No boot service is installed.
+
+State/logs stay external. Stop validates PID, executable and UTC start instant for
+all recorded processes before terminating any. It leaves data, models, backups and
+reused services untouched. A changed configuration or PID refuses automatic stop.
+Keep the original config for stopping the session. Inspect retained logs after any
+startup failure. Health reports exited processes; stop cleans retained state.
+
+Semantic retrieval remains optional and separate: use the existing evaluation copy
+and its pinned embedding configuration after verifying the installed fingerprint.
+Keep generation=local. Start the existing portable runtime explicitly with
+scripts/local-model.ps1; never pull or resume models as part of session startup.
+Selecting an index/model mismatch may abstain even with published catalogue records.
+Never silently reindex or replace the main database. Any future index change needs
+selected database backup, explicit command and real PostgreSQL persistence checks.
+
+Web guide timeout is 15 seconds by default. Anonymous questions use canonical v1;
+answered, abstained and provider_unavailable are HTTP 200. Transport/422/429 are
+separate errors. A 429 uses Retry-After seconds (60 if missing/invalid). The question
+is retained for manual retry; there is no automatic retry. Cancelling aborts the
+request and discards late completions. It does not guarantee immediate server/GPU
+cancellation. Catalogue, HTML detail and the existing player remain independent.
+
+No player synchronization, binary distribution, Unity client, cloud provisioning,
+external AI upload, paid plan or voice production is performed by this operation.
