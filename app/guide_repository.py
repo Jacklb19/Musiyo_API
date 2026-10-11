@@ -9,7 +9,8 @@ import sqlalchemy as sa
 
 from .content_tables import CONTENT
 from .db import utc_now
-from .guide_adapters import Embeddings, LocalHashEmbeddings, terms
+from .guide_adapters import Embeddings, LocalHashEmbeddings
+from .guide_relevance import coverage, is_identity_question, question_terms
 from .public_repository import ASSISTANT_ELEMENTS, PublicRepository
 
 
@@ -127,9 +128,10 @@ class GuideRepository:
         return result
 
     def retrieve(self, question: str, element_slug: str | None, embeddings: Embeddings, settings) -> list[Evidence]:
-        query_terms = terms(question)
+        query_terms = question_terms(question)
         if not query_terms:
             return []
+        identity = is_identity_question(question)
         table = CONTENT['index_fragments']
         base = sa.select(table).join(ASSISTANT_ELEMENTS, ASSISTANT_ELEMENTS.c.id == table.c.element_id)
         base = base.where(table.c.embedding_model == embeddings.model)
@@ -150,7 +152,12 @@ class GuideRepository:
         else:
             rows = self.db.execute(base.order_by(table.c.id)).mappings().all()
             semantic = sorted(rows, key=lambda row: -sum(a * b for a, b in zip(vector, row['embedding'] or [], strict=False)))[:settings.candidate_limit]
-            lexical = sorted(rows, key=lambda row: -len(query_terms & terms(row['text'])))[:settings.candidate_limit]
+            # Rank actual authorized evidence, not serialized credits/source metadata.
+            current = {item.fragment_id: item for item in self.current(rows)}
+            lexical = sorted((row for row in rows if row['id'] in current),
+                             key=lambda row: (-coverage(query_terms, current[row['id']].text + ' ' + current[row['id']].title),
+                                              -int(identity and current[row['id']].kind == 'summary'),
+                                              -coverage(query_terms, current[row['id']].text), row['id']))[:settings.candidate_limit]
         scores: dict[str, float] = {}
         candidates = {}
         for ranking in (lexical, semantic):
@@ -163,10 +170,19 @@ class GuideRepository:
         # candidate gate, while generation must still abstain without direct support.
         similarities = {row['id']: sum(a * b for a, b in zip(vector, row['embedding'] or [], strict=False))
                         for row in candidates.values()}
+        # Extractive answers cannot infer support for unmatched question qualifiers.
+        # Preserve the semantic adapter's separate similarity gate and settings.
+        minimum_coverage = (1.0 if settings.generation == 'local' and isinstance(embeddings, LocalHashEmbeddings)
+                            else settings.minimum_coverage)
         evidence = [item for item in evidence
-                    if len(query_terms & terms(item.text + ' ' + item.title)) / len(query_terms) >= settings.minimum_coverage
+                    if coverage(query_terms, item.text + ' ' + item.title) >= minimum_coverage
                     or not isinstance(embeddings, LocalHashEmbeddings)
                     and similarities[item.fragment_id] >= settings.minimum_similarity]
+        if isinstance(embeddings, LocalHashEmbeddings):
+            evidence.sort(key=lambda item: (-coverage(query_terms, item.text + ' ' + item.title),
+                                            -int(identity and item.kind == 'summary'),
+                                            -coverage(query_terms, item.text),
+                                            -scores[item.fragment_id], item.fragment_id))
         return evidence[:settings.evidence_limit]
 
     def revalidate(self, evidence: list[Evidence]) -> bool:
