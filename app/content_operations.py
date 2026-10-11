@@ -182,6 +182,8 @@ def import_package(manifest: Path, database_url=None, dry_run=False, private_sto
                     db.execute(CONTENT["authorizations"].update().where(CONTENT["authorizations"].c.resource_id.in_(existing_ids))
                         .values(revoked_at=now, revocation_reason="removed_by_import"))
             db.flush()
+            for item in package.elements:
+                reindex_in_session(db, item.record.slug)
             if dry_run:
                 db.rollback()
             else:
@@ -259,29 +261,12 @@ def verify_validity(database_url=None):
 def reindex(database_url=None, element_id=None):
     with make_session_factory(database_url).begin() as db:
         count = reindex_in_session(db, element_id)
-    return {"indexed_fragments": count, "embedding_status": "pending_provider"}
+    return {"indexed_fragments": count, "embedding_status": "local", "embedding_model": "local-hash-v1"}
 
 
 def reindex_in_session(db, element_id=None, now=utc_now):
-    public = PublicRepository(db, now)
-    allowed = set(db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id)))
-    if element_id is not None:
-        allowed &= {element_id}
-    table = CONTENT["index_fragments"]
-    condition = table.c.element_id == element_id if element_id else sa.true()
-    db.execute(table.delete().where(condition))
-    count = 0
-    for slug in sorted(allowed):
-        record = public.element(slug)
-        if record is None:
-            continue
-        for block in record.blocks:
-            if block.id == "legacy-interpretation":
-                continue
-            db.execute(table.insert().values(element_id=slug, block_id=block.id, text=block.text,
-                text_hash=hashlib.sha256(block.text.encode("utf-8")).hexdigest(), embedding_model="pending", embedding=None))
-            count += 1
-    return count
+    from .guide_repository import index_evidence
+    return index_evidence(db, element_id, now)
 
 
 def create_validator(username, name, password, database_url=None):

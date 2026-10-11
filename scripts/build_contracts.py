@@ -14,6 +14,7 @@ from app.contracts import (
     SelectionConfirmed,
     ValidatorSession,
 )
+from app.guide_contracts import GuideQuestion, GuideResponse
 from app.main import Tour, app
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +28,8 @@ def write_json(path: Path, value: dict) -> None:
 
 def main() -> None:
     write_json(CONTRACTS / "openapi.json", app.openapi())
+    write_json(CONTRACTS / "guide-question.v1.schema.json", GuideQuestion.model_json_schema())
+    write_json(CONTRACTS / "guide-response.v1.schema.json", GuideResponse.model_json_schema())
     write_json(CONTRACTS / "tour.v1.schema.json", Tour.model_json_schema())
     write_json(CONTRACTS / "element.v1.schema.json", Element.model_json_schema())
     write_json(CONTRACTS / "bridge.v1.schema.json", SelectionConfirmed.model_json_schema())

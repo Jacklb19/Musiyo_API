@@ -46,6 +46,11 @@ class PublicRepository:
             connection.create_function("musiyo_now", 0, lambda: instant)
             connection.create_function("musiyo_catalog_rank", 4, local_rank, deterministic=True)
 
+    def ready(self) -> bool:
+        revision = self.db.scalar(sa.text("SELECT version_num FROM alembic_version"))
+        self.db.execute(sa.text("SELECT id FROM v_assistant_elements LIMIT 0"))
+        return revision == "0005"
+
     def facets(self, name: str) -> list[CatalogFacet]:
         term = CONTENT[name]
         metadata = CONTENT["element_metadata"] if name == "categories" else CONTENT["collection_elements"]

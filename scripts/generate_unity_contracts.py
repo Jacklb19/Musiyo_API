@@ -16,6 +16,8 @@ def generate() -> str:
     roots["CatalogFacet"] = json.loads((CONTRACTS / "catalog-facet.v1.schema.json").read_text(encoding="utf-8"))
     roots["ResourceAccess"] = json.loads((CONTRACTS / "resource-access.v1.schema.json").read_text(encoding="utf-8"))
     roots["ValidatorSession"] = json.loads((CONTRACTS / "validator-session.v1.schema.json").read_text(encoding="utf-8"))
+    roots["GuideQuestion"] = json.loads((CONTRACTS / "guide-question.v1.schema.json").read_text(encoding="utf-8"))
+    roots["GuideResponse"] = json.loads((CONTRACTS / "guide-response.v1.schema.json").read_text(encoding="utf-8"))
     models = {}
     for schema in roots.values():
         models.update(schema.get("$defs", {}))

@@ -67,7 +67,7 @@ def test_corrections_update_public_detail_search_and_index_atomically(tmp_path):
         assert before[field] == record[field]
     assert client.get("/api/v1/catalog", params={"query":"edicion"}).json()["total"] == 1
     with factory() as db:
-        assert db.scalar(sa.select(CONTENT["index_fragments"].c.text)) == "Interpretación corregida para pruebas"
+        assert json.loads(db.scalar(sa.select(CONTENT["index_fragments"].c.text)))["text"] == "Interpretación corregida para pruebas"
         audit = db.execute(sa.select(CONTENT["validator_corrections"])).mappings().one()
         assert audit["fields"] == ["title", "description", "interpretations.block-test"]
         assert "Synthetic text" not in json.dumps(dict(audit), default=str)

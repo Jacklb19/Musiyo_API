@@ -1,0 +1,170 @@
+"""Authorized, current evidence from the existing PostgreSQL/pgvector index."""
+import hashlib
+import json
+import math
+from dataclasses import dataclass, replace
+from typing import Any, Literal
+
+import sqlalchemy as sa
+
+from .content_tables import CONTENT
+from .db import utc_now
+from .guide_adapters import Embeddings, LocalHashEmbeddings, terms
+from .public_repository import ASSISTANT_ELEMENTS, PublicRepository
+
+
+@dataclass(frozen=True)
+class Evidence:
+    fragment_id: str
+    element_slug: str
+    title: str
+    community: str | None
+    block_id: str | None
+    kind: Literal['summary', 'documented_fact', 'testimony', 'interpretation']
+    text: str
+    source_id: str | None
+    source_reference: str | None
+    source_url: str | None
+    attribution: str | None
+    context: str | None
+    credits: tuple[tuple[str | None, str], ...]
+
+    @property
+    def indexed_text(self) -> str:
+        # Metadata is part of the fingerprint, so a correction invalidates stale evidence.
+        return json.dumps({key: value for key, value in self.__dict__.items() if key != 'fragment_id'},
+                          ensure_ascii=False, sort_keys=True)
+
+    @property
+    def text_hash(self) -> str:
+        return hashlib.sha256(self.indexed_text.encode()).hexdigest()
+
+
+def chunks(text: str):
+    start = 0
+    while start < len(text):
+        end = min(start + 800, len(text))
+        if end < len(text):
+            boundary = text.rfind(' ', start + 650, end)
+            if boundary > start:
+                end = boundary
+        yield text[start:end].strip()
+        if end == len(text):
+            break
+        start = end - 100
+
+
+def record_evidence(record):
+    sources = {source.id: source for source in record.sources}
+    community = record.community.name if record.community else None
+    credits = tuple((credit.role, credit.name) for credit in record.credits)
+    blocks = [(block.id, block.kind, block.text, block.source_id, block.attribution, block.context)
+              for block in record.blocks if block.id != 'legacy-interpretation']
+    if record.sources and record.description.strip():
+        # A summary cites the record, without inventing a source-to-description correspondence.
+        blocks.insert(0, (None, 'summary', record.description, None, None, None))
+    for block_id, kind, text, source_id, attribution, context in blocks:
+        source = sources.get(source_id)
+        for chunk in chunks(text):
+            yield Evidence('', record.slug, record.title, community, block_id, kind, chunk, source_id,
+                           source.reference if source else None, source.url if source else None,
+                           attribution, context, credits)
+
+
+def index_evidence(db, element_id=None, now=utc_now, embeddings: Embeddings | None = None):
+    public = PublicRepository(db, now)
+    adapter = embeddings or LocalHashEmbeddings()
+    if adapter.dimension != 1024:
+        raise ValueError("The current pgvector schema requires 1024 dimensions")
+    table = CONTENT['index_fragments']
+    allowed = set(db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id)))
+    if element_id is not None:
+        allowed &= {element_id}
+    db.execute(table.delete().where(table.c.element_id == element_id if element_id else sa.true()))
+    count = 0
+    for slug in sorted(allowed):
+        record = public.element(slug)
+        if record is None:
+            continue
+        evidence = list(record_evidence(record))
+        vectors = adapter.embed([item.indexed_text for item in evidence])
+        if len(vectors) != len(evidence):
+            raise ValueError("Embedding count differs from evidence")
+        for item, vector in zip(evidence, vectors, strict=True):
+            if len(vector) != 1024:
+                raise ValueError("Embedding dimension differs from the schema")
+            if any(not math.isfinite(number) for number in vector):
+                raise ValueError("Embedding must contain finite values")
+            values: dict[str, Any] = dict(element_id=slug, block_id=item.block_id, text=item.indexed_text,
+                                        text_hash=item.text_hash, embedding=vector, embedding_model=adapter.model)
+            values['search_vector'] = sa.func.to_tsvector(sa.literal_column("'public.spanish_unaccent'"),
+                                                         item.text + ' ' + item.title) if db.bind.dialect.name == 'postgresql' else None
+            db.execute(table.insert().values(**values))
+            count += 1
+    return count
+
+
+class GuideRepository:
+    def __init__(self, db, now=utc_now):
+        self.db, self.now = db, now
+        self.public = PublicRepository(db, now)
+
+    def current(self, rows) -> list[Evidence]:
+        records = {}
+        result = []
+        allowed = set(self.db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id)))
+        for row in rows:
+            slug = row['element_id']
+            if slug not in allowed:
+                continue
+            if slug not in records:
+                record = self.public.element(slug)
+                records[slug] = {item.text_hash: item for item in record_evidence(record)} if record else {}
+            item = records[slug].get(row['text_hash'])
+            if item is not None and item.indexed_text == row['text']:
+                result.append(replace(item, fragment_id=row['id']))
+        return result
+
+    def retrieve(self, question: str, element_slug: str | None, embeddings: Embeddings, settings) -> list[Evidence]:
+        query_terms = terms(question)
+        if not query_terms:
+            return []
+        table = CONTENT['index_fragments']
+        base = sa.select(table).join(ASSISTANT_ELEMENTS, ASSISTANT_ELEMENTS.c.id == table.c.element_id)
+        base = base.where(table.c.embedding_model == embeddings.model)
+        if element_slug:
+            base = base.where(table.c.element_id == element_slug)
+        if self.db.bind.dialect.name == 'postgresql':
+            vector = embeddings.embed([question])[0]
+            distance = table.c.embedding.op('<=>')(sa.cast(sa.literal(json.dumps(vector)), table.c.embedding.type))
+            semantic = self.db.execute(base.where(table.c.embedding.is_not(None))
+                                       .order_by(distance, table.c.id).limit(settings.candidate_limit)).mappings().all()
+            query = sa.func.websearch_to_tsquery(sa.literal_column("'public.spanish_unaccent'"), ' '.join(sorted(query_terms)))
+            lexical = self.db.execute(base.where(table.c.search_vector.bool_op('@@')(query))
+                                      .order_by(sa.func.ts_rank_cd(table.c.search_vector, query).desc(), table.c.id)
+                                      .limit(settings.candidate_limit)).mappings().all()
+        else:
+            rows = self.db.execute(base.order_by(table.c.id)).mappings().all()
+            vector = embeddings.embed([question])[0]
+            semantic = sorted(rows, key=lambda row: -sum(a * b for a, b in zip(vector, row['embedding'] or [], strict=False)))[:settings.candidate_limit]
+            lexical = sorted(rows, key=lambda row: -len(query_terms & terms(row['text'])))[:settings.candidate_limit]
+        scores: dict[str, float] = {}
+        candidates = {}
+        for ranking in (lexical, semantic):
+            for rank, row in enumerate(ranking):
+                candidates[row['id']] = row
+                scores[row['id']] = scores.get(row['id'], 0.0) + 1 / (60 + rank + 1)
+        ordered = sorted(candidates, key=lambda key: (-scores[key], key))
+        evidence = self.current([candidates[key] for key in ordered])
+        # Hash embeddings must never establish semantic sufficiency from a collision.
+        evidence = [item for item in evidence if len(query_terms & terms(item.text + ' ' + item.title)) / len(query_terms) >= settings.minimum_coverage]
+        return evidence[:settings.evidence_limit]
+
+    def revalidate(self, evidence: list[Evidence]) -> bool:
+        # End the retrieval snapshot; PostgreSQL CURRENT_TIMESTAMP must advance too.
+        self.db.rollback()
+        self.public = PublicRepository(self.db, self.now)
+        table = CONTENT['index_fragments']
+        rows = self.db.execute(sa.select(table).where(table.c.id.in_([item.fragment_id for item in evidence]))).mappings().all()
+        current = {item.fragment_id: item.text_hash for item in self.current(rows)}
+        return all(current.get(item.fragment_id) == item.text_hash for item in evidence)

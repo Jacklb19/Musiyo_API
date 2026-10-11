@@ -1,5 +1,6 @@
 """Copy canonical API contracts to the Web and Unity repositories."""
 
+import argparse
 import hashlib
 import shutil
 from pathlib import Path
@@ -15,6 +16,10 @@ TARGETS = (
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--target', choices=('web', 'unity', 'all'), default='all')
+    args = parser.parse_args()
+    selected = TARGETS if args.target == 'all' else (TARGETS[0] if args.target == 'web' else TARGETS[1],)
     files = sorted(path for path in SOURCE.rglob("*.json") if path.is_file())
     if not files:
         raise SystemExit("No generated contracts found. Run scripts/build_contracts.py first.")
@@ -22,7 +27,7 @@ def main() -> None:
         f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(SOURCE).as_posix()}\n"
         for path in files
     )
-    for target in TARGETS:
+    for target in selected:
         target.mkdir(parents=True, exist_ok=True)
         for source in files:
             destination = target / source.relative_to(SOURCE)
@@ -30,8 +35,9 @@ def main() -> None:
             shutil.copyfile(source, destination)
         (target / "source.sha256").write_text(manifest, encoding="utf-8", newline="\n")
         print(target)
-    destination = TARGETS[1].parent / "Scripts/Museo/PublicContractModelsV1.cs"
-    destination.write_text(generate(), encoding="utf-8", newline="\n")
+    if TARGETS[1] in selected:
+        destination = TARGETS[1].parent / "Scripts/Museo/PublicContractModelsV1.cs"
+        destination.write_text(generate(), encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":
