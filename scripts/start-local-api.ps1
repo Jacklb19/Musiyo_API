@@ -20,16 +20,32 @@ if (-not $originUri.IsAbsoluteUri -or $originUri.Scheme -notin 'http', 'https' -
 $pythonPath = Join-Path $apiRoot '.venv/Scripts/python.exe'
 if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) { throw 'Install the API development virtual environment first.' }
 
-if ($GuideConfig) {
-    $env:MUSIYO_GUIDE_CONFIG = (Resolve-Path -LiteralPath $GuideConfig).Path
+$variableNames = @('MUSIYO_DATABASE_URL', 'MUSIYO_STORAGE_ROOT', 'MUSIYO_STORAGE_BACKEND', 'MUSIYO_WEB_ORIGIN', 'MUSIYO_GUIDE_CONFIG')
+$variableNames += @(Get-ChildItem Env:MUSIYO_GUIDE_* | ForEach-Object Name)
+$previousValues = @{}
+foreach ($name in ($variableNames | Select-Object -Unique)) {
+    $previousValues[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
-$env:MUSIYO_DATABASE_URL = 'sqlite:///' + $databaseFile.Replace('\', '/')
-$env:MUSIYO_STORAGE_ROOT = $resourceDirectory
-$env:MUSIYO_STORAGE_BACKEND = 'local'
-$env:MUSIYO_WEB_ORIGIN = $WebOrigin
 Push-Location -LiteralPath $apiRoot
 try {
+    # A selected file is authoritative; inherited adapter overrides must not silently change it.
+    foreach ($name in $previousValues.Keys) {
+        if ($name -like 'MUSIYO_GUIDE_*') { [Environment]::SetEnvironmentVariable($name, $null, 'Process') }
+    }
+    if ($GuideConfig) { $env:MUSIYO_GUIDE_CONFIG = (Resolve-Path -LiteralPath $GuideConfig).Path }
+    $env:MUSIYO_DATABASE_URL = 'sqlite:///' + $databaseFile.Replace('\', '/')
+    $env:MUSIYO_STORAGE_ROOT = $resourceDirectory
+    $env:MUSIYO_STORAGE_BACKEND = 'local'
+    $env:MUSIYO_WEB_ORIGIN = $WebOrigin
+    & $pythonPath -c 'from app.guide_config import GuideSettings; GuideSettings.from_environment()'
+    if ($LASTEXITCODE -ne 0) { throw 'Invalid selected guide configuration.' }
+    if (@(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue).Count) {
+        throw 'The selected API port is occupied; no service was changed.'
+    }
     Write-Output "Starting the local API on port $Port with the selected database and private storage."
     & $pythonPath -m uvicorn app.main:app --host 127.0.0.1 --port $Port
     if ($LASTEXITCODE -ne 0) { throw "The API exited with code $LASTEXITCODE." }
-} finally { Pop-Location }
+} finally {
+    foreach ($name in $previousValues.Keys) { [Environment]::SetEnvironmentVariable($name, $previousValues[$name], 'Process') }
+    Pop-Location
+}
