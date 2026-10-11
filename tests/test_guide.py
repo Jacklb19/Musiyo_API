@@ -164,8 +164,13 @@ def test_question_validation_and_rate_limit_are_separate_from_functional_states(
         assert client.post('/api/v1/guide/questions', json=body).status_code == 422
     assert question('  valid  ').question == 'valid'
     for _ in range(10):
-        assert client.post('/api/v1/guide/questions', json=question().model_dump()).status_code == 200
-    assert client.post('/api/v1/guide/questions', json=question().model_dump()).status_code == 429
+        available = client.post('/api/v1/guide/questions', json=question().model_dump())
+        assert available.status_code == 200 and 'Retry-After' not in available.headers
+    limited = client.post('/api/v1/guide/questions', json=question().model_dump())
+    assert limited.status_code == 429 and limited.json()['code'] == 'rate_limited'
+    assert limited.headers['Retry-After'] == '60'
+    assert limited.headers['Cache-Control'] == 'private, no-store'
+    assert limited.headers['Content-Type'] == 'application/problem+json'
     assert client.get('/api/v1/catalog').status_code == 200
     clock = [0.0]
     limiter = QuestionLimiter(1, 1, lambda: clock[0])

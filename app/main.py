@@ -59,7 +59,10 @@ def create_app(
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(request, error):
-        return problem_response(error.status_code, str(error.detail))
+        response = problem_response(error.status_code, str(error.detail))
+        if error.status_code == 429 and error.headers and "Retry-After" in error.headers:
+            response.headers["Retry-After"] = error.headers["Retry-After"]
+        return response
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(request, error):
