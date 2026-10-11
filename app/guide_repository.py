@@ -87,7 +87,8 @@ def index_evidence(db, element_id=None, now=utc_now, embeddings: Embeddings | No
         if record is None:
             continue
         evidence = list(record_evidence(record))
-        vectors = adapter.embed([item.indexed_text for item in evidence])
+        vectors = adapter.embed([item.indexed_text if isinstance(adapter, LocalHashEmbeddings) else
+                                item.title + "\n" + item.text for item in evidence])
         if len(vectors) != len(evidence):
             raise ValueError("Embedding count differs from evidence")
         for item, vector in zip(evidence, vectors, strict=True):
@@ -134,8 +135,11 @@ class GuideRepository:
         base = base.where(table.c.embedding_model == embeddings.model)
         if element_slug:
             base = base.where(table.c.element_id == element_slug)
+        if self.db.execute(base.limit(1)).first() is None:
+            return []
+        query_embedding = getattr(embeddings, 'embed_query', None)
+        vector = query_embedding(question) if query_embedding else embeddings.embed([question])[0]
         if self.db.bind.dialect.name == 'postgresql':
-            vector = embeddings.embed([question])[0]
             distance = table.c.embedding.op('<=>')(sa.cast(sa.literal(json.dumps(vector)), table.c.embedding.type))
             semantic = self.db.execute(base.where(table.c.embedding.is_not(None))
                                        .order_by(distance, table.c.id).limit(settings.candidate_limit)).mappings().all()
@@ -145,7 +149,6 @@ class GuideRepository:
                                       .limit(settings.candidate_limit)).mappings().all()
         else:
             rows = self.db.execute(base.order_by(table.c.id)).mappings().all()
-            vector = embeddings.embed([question])[0]
             semantic = sorted(rows, key=lambda row: -sum(a * b for a, b in zip(vector, row['embedding'] or [], strict=False)))[:settings.candidate_limit]
             lexical = sorted(rows, key=lambda row: -len(query_terms & terms(row['text'])))[:settings.candidate_limit]
         scores: dict[str, float] = {}
@@ -156,8 +159,14 @@ class GuideRepository:
                 scores[row['id']] = scores.get(row['id'], 0.0) + 1 / (60 + rank + 1)
         ordered = sorted(candidates, key=lambda key: (-scores[key], key))
         evidence = self.current([candidates[key] for key in ordered])
-        # Hash embeddings must never establish semantic sufficiency from a collision.
-        evidence = [item for item in evidence if len(query_terms & terms(item.text + ' ' + item.title)) / len(query_terms) >= settings.minimum_coverage]
+        # Hash collisions cannot establish sufficiency. Real model similarity is a
+        # candidate gate, while generation must still abstain without direct support.
+        similarities = {row['id']: sum(a * b for a, b in zip(vector, row['embedding'] or [], strict=False))
+                        for row in candidates.values()}
+        evidence = [item for item in evidence
+                    if len(query_terms & terms(item.text + ' ' + item.title)) / len(query_terms) >= settings.minimum_coverage
+                    or not isinstance(embeddings, LocalHashEmbeddings)
+                    and similarities[item.fragment_id] >= settings.minimum_similarity]
         return evidence[:settings.evidence_limit]
 
     def revalidate(self, evidence: list[Evidence]) -> bool:

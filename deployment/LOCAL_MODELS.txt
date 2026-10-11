@@ -1,0 +1,92 @@
+LOCAL TEXTUAL GUIDE - WINDOWS / OLLAMA
+
+Scope
+Qwen generates textual answers from current authorized evidence. Qwen Embedding
+replaces the deterministic lexical vectors. The public guide v1 wire contract is
+unchanged. ElevenLabs Studio produces prerecorded narrations separately. Dynamic
+voice would use backend TTS later; no ElevenLabs upload or paid service is enabled.
+
+Install and select
+Use an official portable Ollama Windows distribution outside every repository.
+Prefer the official complete archive and verify its published SHA-256 before
+extraction. A Vulkan backend supports the inspected RTX 4060; no system CUDA toolkit
+or permanent PATH/startup changes are required. Keep model files outside the repo.
+The development evaluation uses Ollama 0.40.2 and explicitly tagged models:
+  qwen3:4b             (generation, Q4_K_M)
+  qwen3-embedding:0.6b (retrieval, 1024 dimensions)
+These are evaluation candidates, not a guarantee of Spanish answer quality or speed.
+
+Start a private, local-only server with PowerShell:
+  ./scripts/local-model.ps1 -Action start -RuntimeDirectory EXTERNAL_RUNTIME -ModelsDirectory EXTERNAL_MODELS
+The script disables Ollama cloud, binds 127.0.0.1:11434, sets one parallel request,
+and saves a process identity outside the repository. No boot service is installed.
+Health and stop use the same arguments with -Action health / -Action stop. Stop
+checks process identity and retains models. No questions or prompts are logged by
+Musiyo. Do not expose the raw model port to Web, Quest or the public Internet.
+
+Download only the selected models, using the explicit portable executable:
+  $env:OLLAMA_HOST = '127.0.0.1:11434'
+  & EXTERNAL_RUNTIME/ollama.exe pull qwen3-embedding:0.6b
+  & EXTERNAL_RUNTIME/ollama.exe pull qwen3:4b
+Downloads fetch model weights, not cultural content. Avoid :latest / :cloud tags.
+Inspect GET http://127.0.0.1:11434/api/tags for each installed name and 64-hex digest.
+
+Configuration
+Create an external JSON file with these settings; replace placeholders with the
+installed digests, without 'sha256:' prefixes:
+  {
+    "embeddings": "ollama",
+    "generation": "ollama",
+    "ollama_url": "http://127.0.0.1:11434",
+    "ollama_embedding_model": "qwen3-embedding:0.6b",
+    "ollama_generation_model": "qwen3:4b",
+    "ollama_embedding_digest": "INSTALLED_EMBEDDING_DIGEST",
+    "ollama_generation_digest": "INSTALLED_GENERATION_DIGEST",
+    "ollama_timeout_seconds": 10,
+    "minimum_similarity": 0.7
+  }
+Set MUSIYO_GUIDE_CONFIG to that file. Individual MUSIYO_GUIDE_* variables override
+it. Settings reject external endpoints, unpinned/remote models, unknown fields and
+oversized/in-repository config files. Every call verifies the current installed
+model digest before transmitting evidence. Provider HTTP does not use environment
+proxies or redirects. Startup does not contact models or migrate/index a database.
+
+Index and readiness
+Back up the external database first. Set its existing MUSIYO_DATABASE_URL and
+MUSIYO_STORAGE_ROOT. Run `.venv/Scripts/python.exe -m app.cli reindex` explicitly.
+The transactional reindex embeds only current assistant-eligible content and stores
+model tag, digest, dimension and preprocessing revision. A failed reindex rolls
+back; existing vectors remain intact but are unusable under a different model.
+Dimensions remain 1024, so no schema migration is introduced. Reconnection and
+revocation must be checked against PostgreSQL when index behavior changes.
+
+Imports/corrections remove stale semantic vectors even when Ollama is offline.
+They preserve ordinary content publication and require another explicit reindex
+before that content can answer questions. Revocation removes fragments immediately;
+answers recheck eligibility and exact source fingerprints after generation.
+Hash embeddings retain their original lexical gate. A real embedding may add
+semantic candidates above a configurable similarity threshold. Calibrate this
+threshold with positive paraphrases and unrelated questions; it is not a guarantee
+that evidence answers the question. Generation must independently abstain without
+direct support; returned ids must refer to retrieved current fragments.
+
+Preview
+  ./scripts/start-local-api.ps1 -DatabasePath EXTERNAL_DB -StorageRoot EXTERNAL_PRIVATE -GuideConfig EXTERNAL_CONFIG -WebOrigin http://localhost:5183 -Port 8013
+Use the existing Web proxy to API. No Unity build synchronization is involved.
+Keep the complete provider deadline below the Web client timeout (15 seconds by
+default). Warm models before rehearsal. The first cold request may time out and
+return provider_unavailable while the provider completes loading. Questions are
+serialized per API process; a busy model returns provider_unavailable, never queues
+unbounded work. Multiworker hosting needs shared admission control.
+
+Verify and operate
+Test supported questions, paraphrases, lack of evidence, fake citation requests,
+prompt injection, revoked/corrected content and provider stop/restart. Schema-valid
+citations do not independently prove every generated claim: manually review factual
+support and attribution. Evaluate actual model outputs separately from fake adapter
+tests. Inspect `ollama ps` for GPU use; model download size is not RAM/VRAM usage.
+Close unnecessary applications yourself before rehearsal; the agent does not close
+Unity or other owner applications. Keep the PC on AC power, awake and accessible.
+The API/PC must be reachable from the visitor's device. Ollama alone does not solve
+public demo networking or continuous availability. The small AWS API proposal is
+not an approved model host, and no GPU cloud resource is provisioned.

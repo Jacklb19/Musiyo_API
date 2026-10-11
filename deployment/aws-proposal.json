@@ -78,13 +78,20 @@
   "stop_behavior": "Compute stops; retained EBS, Elastic IP, stored object versions and CDN traffic continue consuming eligible credits.",
   "expiry_policy": "Export and verify local database/files before credit depletion or account closure. Free account closure can remove access to resources/data; retain at least two local copies.",
   "models": {
-    "current_embeddings": "local-hash-v1, 1024 dimensions; lexical baseline, no semantic quality claim",
-    "current_generation": "local extractive quotations, no external provider",
-    "future_candidates": [
-      "Amazon Titan Text Embeddings V2 (1024 dimensions)",
-      "Amazon Nova Micro, text only"
-    ],
-    "external_processing": "pending owner authorization; model quality in Spanish, region, credit coverage, prices and provider data conditions must be verified before enabling. No provider invocation permissions in the instance role."
+    "default_embeddings": "local-hash-v1, 1024 dimensions; deterministic lexical baseline",
+    "default_generation": "local extractive quotations",
+    "selected_local_trial": {
+      "runtime": "Ollama, local-only mode",
+      "embedding_model": "qwen3-embedding:0.6b, 1024 dimensions; installed digest pinned in external configuration",
+      "generation_model": "qwen3:4b, Q4_K_M; installed digest pinned in external configuration",
+      "host": "Owner Windows PC with RTX 4060 Laptop 8 GiB; not the proposed t3.small API host",
+      "state": "adapters verified; real model quality and latency evaluation in progress",
+      "networking": "Native API and model remain on the PC during local development. Any AWS-to-PC connectivity requires a concrete secure delivery design and owner approval; no public model port.",
+      "availability": "Requires inference PC awake and reachable. This is not continuous hosting."
+    },
+    "prerecorded_narration": "ElevenLabs Studio, exported audio files; provider upload and quotas must be handled separately",
+    "dynamic_voice": "Future backend ElevenLabs Text-to-Speech API, not Studio projects; processing permission and quota coverage pending",
+    "external_processing": "No cloud model invocation enabled. Local model weights may be downloaded; cultural evidence and questions stay local. No provider invocation permissions in the instance role."
   },
   "sources": {
     "free_plan": "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html",
@@ -97,6 +104,10 @@
     "flat_rate_restriction": "https://docs.aws.amazon.com/pdfs/PricingPlanManager/latest/UserGuide/pricingplanmanager-ug.pdf",
     "embedding_candidate": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-titan-text-embeddings-v2.html",
     "generation_candidates": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards-amazon.html",
-    "ec2_free_eligibility": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-free-tier-usage.html"
+    "ec2_free_eligibility": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-free-tier-usage.html",
+    "ollama_local": "https://docs.ollama.com/faq",
+    "ollama_windows": "https://docs.ollama.com/windows",
+    "local_generation_model": "https://ollama.com/library/qwen3:4b",
+    "local_embedding_model": "https://ollama.com/library/qwen3-embedding"
   }
 }
