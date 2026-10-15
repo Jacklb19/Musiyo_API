@@ -5,7 +5,11 @@ endpoint, new public schema or provider activation is introduced. Audit exactly
 one external manifest with:
   python -m scripts.audit_narrations --manifest EXTERNAL_MANIFEST --output NEW_EXTERNAL_JSON
 This reuses the importer's schema/header/hash/size checks and never imports files.
-WAV duration is measured; other encodings explicitly require a separate media probe.
+WAV duration is measured from PCM frames. Bounded MP3 frame scanning measures
+encoded duration, sample rate, channels and bitrate without installing a decoder.
+Other encodings require an independent probe. Structural timing does not establish
+successful decoding or spoken transcript/pronunciation; verify actual browser
+playback and retain listening acceptance separately.
 
 For a prerecorded narration, select its already published element and stable
 point keys. Prepare the final encoded audio externally, with resource.kind=narration,
@@ -28,3 +32,19 @@ keyboard playback, pause/repeat/mute and readable transcript. Unity's maintainer
 checks proximity pause/resume and ambient mix in its closed build. Headset/browser
 listening and final audio acceptance remain separate from package validation.
 Dynamic voice/STT remain later decisions after text answer quality and sources.
+
+For an explicitly authorized audio append to already published records:
+  python -m app.cli import EXTERNAL_MANIFEST --resources-only --dry-run
+  python -m app.cli import EXTERNAL_MANIFEST --resources-only
+Select the existing database and matching private storage explicitly through the
+normal environment configuration. Never use server startup to import or reindex.
+The append mode requires the exact current parent record (excluding resources and
+correction metadata), identical point links, new resource IDs and only narration or
+subtitle resources. Include just the selected new resources in the manifest. It
+preserves old resources, parent publication decisions, point order and guide index;
+affected tours receive one UTC revision timestamp per transaction. A dry-run rolls
+back that timestamp and all rows, without copying files. Existing IDs are refused,
+including revoked resources: this command cannot replace or reactivate them.
+Normal full-record imports retain their existing replacement behavior. Keep the
+package decision and any local-only use or pending rights/listening evidence with
+the external delivery; a technical audit never supplies missing authorization.

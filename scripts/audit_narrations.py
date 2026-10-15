@@ -2,12 +2,12 @@
 import argparse
 import hashlib
 import json
-import wave
 from pathlib import Path
 
 from app.content_operations import checked_files
 from app.content_package import ContentPackage
 from scripts.evaluate_guide import WORKSPACE, external_file
+from scripts.media_probe import probe_audio
 
 
 def audit(manifest: Path):
@@ -19,10 +19,8 @@ def audit(manifest: Path):
             if resource.kind not in {"audio", "narration"}:
                 continue
             path, size, _ = files[resource.id]
-            measured = None
-            if resource.mime == "audio/wav":
-                with wave.open(str(path), "rb") as audio:
-                    measured = audio.getnframes() / audio.getframerate()
+            probe = probe_audio(path, resource.mime)
+            measured = probe["duration_seconds"] if probe else None
             issues = []
             if not resource.transcription or not resource.transcription.strip():
                 issues.append("A nonblank transcript of the actual recording is required")
@@ -38,7 +36,7 @@ def audit(manifest: Path):
             recordings.append(dict(element_slug=item.record.slug, resource_id=resource.id, kind=resource.kind,
                                    mime=resource.mime, byte_count=size, sha256=package.files[resource.id].sha256,
                                    transcription_sha256=hashlib.sha256((resource.transcription or "").encode()).hexdigest(),
-                                   declared_seconds=resource.duration_seconds, measured_seconds=measured,
+                                   declared_seconds=resource.duration_seconds, measured_seconds=measured, probe=probe,
                                    subtitles_resource_id=resource.subtitles_resource_id,
                                    measurement_issues=issues))
     return dict(schema_version=1, operation="read_only_package_audit", element_count=len(package.elements),
