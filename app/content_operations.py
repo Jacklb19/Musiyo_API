@@ -90,7 +90,7 @@ def checked_files(package, folder):
     return checked
 
 
-def import_package(manifest: Path, database_url=None, dry_run=False, private_storage=None):
+def import_package(manifest: Path, database_url=None, dry_run=False, private_storage=None, resources_only=False):
     manifest = manifest.resolve()
     package = ContentPackage.model_validate_json(manifest.read_text(encoding="utf-8"))
     files = checked_files(package, manifest.parent)
@@ -110,54 +110,67 @@ def import_package(manifest: Path, database_url=None, dry_run=False, private_sto
                 for key in item.point_keys:
                     if db.get(PointRecord, key) is None:
                         raise ValueError("Unknown point in the package")
-                element = db.get(ElementRecord, record.slug)
-                if element is None:
-                    element = ElementRecord(id=record.slug, title=record.title, description=record.description)
-                    db.add(element)
-                element.title, element.description = record.title, record.description
-                db.flush()
-                metadata = {"kind": item.kind, "technique": record.technique, "materials": record.materials,
-                    "category_id": term(db, "categories", record.category) if record.category else None, "community_id": None}
-                if record.community:
-                    table = CONTENT["communities"]
-                    community = db.scalar(sa.select(table.c.id).where(table.c.name == record.community.name, table.c.people == record.community.people))
-                    if community is None:
-                        community = str(uuid4())
-                        db.execute(table.insert().values(id=community, name=record.community.name, people=record.community.people))
-                    metadata["community_id"] = community
-                upsert(db, CONTENT["element_metadata"], {"element_id": record.slug}, metadata)
-                upsert(db, CONTENT["element_details"], {"element_id": record.slug}, {"title": record.title, "description": record.description})
-                for name in ("index_fragments", "detail_blocks", "element_sources", "collection_elements", "credits", "restrictions"):
-                    db.execute(CONTENT[name].delete().where(CONTENT[name].c.element_id == record.slug))
-                for source in record.sources:
-                    table = CONTENT["sources"]
-                    existing = db.execute(sa.select(table).where(table.c.id == source.id)).mappings().first()
-                    values = source.model_dump(exclude={"id"})
-                    if existing and any(existing[field] != value for field, value in values.items()):
-                        raise ValueError("Existing source differs from the package")
-                    if not existing:
-                        db.execute(table.insert().values(id=source.id, **values))
-                    db.execute(CONTENT["element_sources"].insert().values(element_id=record.slug, source_id=source.id))
-                for order, block in enumerate(record.blocks):
-                    db.execute(CONTENT["detail_blocks"].insert().values(element_id=record.slug, order=order, **block.model_dump()))
-                for order, collection in enumerate(record.collections):
-                    db.execute(CONTENT["collection_elements"].insert().values(element_id=record.slug, collection_id=term(db, "collections", collection), order=order))
-                for order, credit in enumerate(record.credits):
-                    db.execute(CONTENT["credits"].insert().values(element_id=record.slug, order=order, **credit.model_dump()))
-                restrictions = [restriction.model_dump() for restriction in record.restrictions]
-                if not item.show_in_tour:
-                    restrictions.append({"kind": "no_tour", "description": "No disponible en el recorrido."})
-                for restriction in restrictions:
-                    db.execute(CONTENT["restrictions"].insert().values(element_id=record.slug, **restriction))
-                previous_links = {link.point_id: link.order for link in db.scalars(sa.select(PointElementRecord).where(PointElementRecord.element_id == record.slug))}
-                db.execute(sa.delete(PointElementRecord).where(PointElementRecord.element_id == record.slug))
-                for key in item.point_keys:
-                    point_order = previous_links.get(key)
-                    if point_order is None:
-                        maximum = db.scalar(sa.select(sa.func.max(PointElementRecord.order)).where(PointElementRecord.point_id == key))
-                        point_order = (maximum if maximum is not None else -1) + 1
-                    db.add(PointElementRecord(point_id=key, element_id=record.slug, order=point_order))
-                grant(db, package.decision, now, element_id=record.slug, allow_assistant=item.allow_assistant)
+                if resources_only:
+                    current = PublicRepository(db).element(record.slug)
+                    excluded = {"resources", "last_modified"}
+                    if current is None or current.model_dump(exclude=excluded) != record.model_dump(exclude=excluded):
+                        raise ValueError("Resource-only import requires the exact current published record")
+                    links = set(db.scalars(sa.select(PointElementRecord.point_id).where(PointElementRecord.element_id == record.slug)))
+                    if links != set(item.point_keys):
+                        raise ValueError("Resource-only import cannot change point assignments")
+                    if not record.resources or any(resource.kind not in {"narration", "subtitles"} for resource in record.resources):
+                        raise ValueError("Resource-only import accepts explicitly selected narrations/subtitles")
+                    if any(db.get(ResourceRecord, resource.id) is not None for resource in record.resources):
+                        raise ValueError("Resource-only import cannot replace or reactivate an existing resource")
+                else:
+                    element = db.get(ElementRecord, record.slug)
+                    if element is None:
+                        element = ElementRecord(id=record.slug, title=record.title, description=record.description)
+                        db.add(element)
+                    element.title, element.description = record.title, record.description
+                    db.flush()
+                    metadata = {"kind": item.kind, "technique": record.technique, "materials": record.materials,
+                        "category_id": term(db, "categories", record.category) if record.category else None, "community_id": None}
+                    if record.community:
+                        table = CONTENT["communities"]
+                        community = db.scalar(sa.select(table.c.id).where(table.c.name == record.community.name, table.c.people == record.community.people))
+                        if community is None:
+                            community = str(uuid4())
+                            db.execute(table.insert().values(id=community, name=record.community.name, people=record.community.people))
+                        metadata["community_id"] = community
+                    upsert(db, CONTENT["element_metadata"], {"element_id": record.slug}, metadata)
+                    upsert(db, CONTENT["element_details"], {"element_id": record.slug}, {"title": record.title, "description": record.description})
+                    for name in ("index_fragments", "detail_blocks", "element_sources", "collection_elements", "credits", "restrictions"):
+                        db.execute(CONTENT[name].delete().where(CONTENT[name].c.element_id == record.slug))
+                    for source in record.sources:
+                        table = CONTENT["sources"]
+                        existing = db.execute(sa.select(table).where(table.c.id == source.id)).mappings().first()
+                        values = source.model_dump(exclude={"id"})
+                        if existing and any(existing[field] != value for field, value in values.items()):
+                            raise ValueError("Existing source differs from the package")
+                        if not existing:
+                            db.execute(table.insert().values(id=source.id, **values))
+                        db.execute(CONTENT["element_sources"].insert().values(element_id=record.slug, source_id=source.id))
+                    for order, block in enumerate(record.blocks):
+                        db.execute(CONTENT["detail_blocks"].insert().values(element_id=record.slug, order=order, **block.model_dump()))
+                    for order, collection in enumerate(record.collections):
+                        db.execute(CONTENT["collection_elements"].insert().values(element_id=record.slug, collection_id=term(db, "collections", collection), order=order))
+                    for order, credit in enumerate(record.credits):
+                        db.execute(CONTENT["credits"].insert().values(element_id=record.slug, order=order, **credit.model_dump()))
+                    restrictions = [restriction.model_dump() for restriction in record.restrictions]
+                    if not item.show_in_tour:
+                        restrictions.append({"kind": "no_tour", "description": "No disponible en el recorrido."})
+                    for restriction in restrictions:
+                        db.execute(CONTENT["restrictions"].insert().values(element_id=record.slug, **restriction))
+                    previous_links = {link.point_id: link.order for link in db.scalars(sa.select(PointElementRecord).where(PointElementRecord.element_id == record.slug))}
+                    db.execute(sa.delete(PointElementRecord).where(PointElementRecord.element_id == record.slug))
+                    for key in item.point_keys:
+                        point_order = previous_links.get(key)
+                        if point_order is None:
+                            maximum = db.scalar(sa.select(sa.func.max(PointElementRecord.order)).where(PointElementRecord.point_id == key))
+                            point_order = (maximum if maximum is not None else -1) + 1
+                        db.add(PointElementRecord(point_id=key, element_id=record.slug, order=point_order))
+                    grant(db, package.decision, now, element_id=record.slug, allow_assistant=item.allow_assistant)
                 for resource in sorted(record.resources, key=lambda value: (package.files[value.id].variant_of is not None, value.kind != "subtitles")):
                     definition = package.files[resource.id]
                     if definition.room_key and db.get(RoomRecord, definition.room_key) is None or definition.point_key and db.get(PointRecord, definition.point_key) is None:
@@ -177,13 +190,26 @@ def import_package(manifest: Path, database_url=None, dry_run=False, private_sto
                     stored.paradata, stored.technical_metadata = definition.paradata, definition.metadata
                     db.flush()
                     grant(db, package.decision, now, resource_id=resource.id, allow_assistant=item.allow_assistant)
-                existing_ids = [row.id for row in db.scalars(sa.select(ResourceRecord).where(ResourceRecord.element_id == record.slug)) if row.id not in {item.id for item in record.resources}]
-                if existing_ids:
-                    db.execute(CONTENT["authorizations"].update().where(CONTENT["authorizations"].c.resource_id.in_(existing_ids))
-                        .values(revoked_at=now, revocation_reason="removed_by_import"))
+                if not resources_only:
+                    existing_ids = [row.id for row in db.scalars(sa.select(ResourceRecord).where(ResourceRecord.element_id == record.slug)) if row.id not in {item.id for item in record.resources}]
+                    if existing_ids:
+                        db.execute(CONTENT["authorizations"].update().where(CONTENT["authorizations"].c.resource_id.in_(existing_ids))
+                            .values(revoked_at=now, revocation_reason="removed_by_import"))
+            revisions = {}
+            if resources_only:
+                # Capabilities change, while parent records, grants, point links and guide index stay intact.
+                keys = set(db.scalars(sa.select(RoomRecord.tour_id).join(PointRecord, PointRecord.room_id == RoomRecord.id)
+                    .join(PointElementRecord, PointElementRecord.point_id == PointRecord.id)
+                    .where(PointElementRecord.element_id.in_([item.record.slug for item in package.elements]))))
+                for key in keys:
+                    tour = db.get(TourRecord, key)
+                    if tour is not None:
+                        tour.revision = now
+                        revisions[key] = tour.revision.isoformat()
             db.flush()
-            for item in package.elements:
-                reindex_in_session(db, item.record.slug)
+            if not resources_only:
+                for item in package.elements:
+                    reindex_in_session(db, item.record.slug)
             if dry_run:
                 db.rollback()
             else:
@@ -213,7 +239,10 @@ def import_package(manifest: Path, database_url=None, dry_run=False, private_sto
             raise
         finally:
             factory.kw["bind"].dispose()
-    return {"dry_run": dry_run, "elements": len(package.elements), "resources": len(files)}
+    result = {"dry_run": dry_run, "elements": len(package.elements), "resources": len(files)}
+    if resources_only:
+        result["tour_revisions"] = revisions
+    return result
 
 
 def grant(db, decision, now, **owner):

@@ -77,6 +77,7 @@ def main(argv=None):
     importer = commands.add_parser("import")
     importer.add_argument("package", help="test-data, museum-test-data, or a private manifest JSON path")
     importer.add_argument("--dry-run", action="store_true")
+    importer.add_argument("--resources-only", action="store_true", help="Append selected narrations without replacing records, grants, links or guide index")
     revoker = commands.add_parser("revoke")
     targets = revoker.add_mutually_exclusive_group(required=True)
     targets.add_argument("--element")
@@ -102,11 +103,11 @@ def main(argv=None):
             result = {"migrated": True}
         elif args.command == "import":
             if args.package in ("test-data", "museum-test-data"):
-                if args.dry_run:
-                    parser.error("Test datasets do not support --dry-run; use a content package")
+                if args.dry_run or args.resources_only:
+                    parser.error("Test datasets do not support package import options")
                 result = import_test_data(dataset=args.package)
             else:
-                result = import_package(Path(args.package), dry_run=args.dry_run)
+                result = import_package(Path(args.package), dry_run=args.dry_run, resources_only=args.resources_only)
         elif args.command == "revoke":
             result = revoke(args.element or args.resource, resource=bool(args.resource), reason=args.reason)
         elif args.command == "withdraw":
