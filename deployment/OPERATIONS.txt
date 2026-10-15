@@ -139,3 +139,16 @@ Guide throttling: HTTP 429 keeps the Problem body and private/no-store caching.
 It includes Retry-After: 60 (seconds), a conservative cooldown for the one-minute
 window. Clients may retain the question for a manual retry; do not auto-resubmit.
 The three guide v1 HTTP 200 outcomes and canonical JSON schemas are unchanged.
+
+Owner credit ceiling (2026-10-15)
+--------------------------------
+The maximum authorized planning envelope is the initial USD 100 AWS credit, with
+USD 0 own spend. Do not assume additional activity awards. Keep USD 20 as an
+operational/export reserve: plan at most USD 80, including other account usage,
+retained EBS/IP, object versions, requests and transfer. Budgets/alerts do not stop
+charges; neither does stopping EC2 remove all costs. No Paid upgrade or uncovered
+service activation. GetAccountPlanState and each resource's actual eligibility
+must be checked before an approved start. This ceiling is not provisioning approval.
+Account observations, identifiers, screenshots and credential status stay external.
+The existing illustrative six-month estimate is a planning allowance, not a tariff
+quote or proof that every service is available to a particular new account.
