@@ -240,3 +240,17 @@ def test_generation_uses_only_supplied_short_references_and_maps_current_ids(gui
     assert allowed == [f'E{index + 1}' for index in range(len(evidence))]
     supplied = json.loads(request['messages'][1]['content'])['evidence']
     assert supplied[0]['fragment_id'] == 'E1'
+
+
+@pytest.mark.parametrize("kind", ["testimony", "interpretation"])
+def test_model_cannot_drop_recorded_attribution_and_context_from_used_evidence(guide, kind):
+    from dataclasses import replace
+
+    evidence = [replace(evidence_for(guide)[0], kind=kind,
+                        attribution="Synthetic contributor", context="Synthetic interview")]
+    payload = dict(sufficient=True, answer="Respuesta breve de prueba.", fragment_ids=["E1"])
+    transport = FakeTransport({"done": True, "message": {"content": json.dumps(payload)}})
+    result = OllamaGeneration(settings(), transport).generate(question().question, evidence)
+    assert "Atribución: Synthetic contributor" in result.answer
+    assert "Contexto: Synthetic interview" in result.answer
+    assert result.fragment_ids == (evidence[0].fragment_id,)

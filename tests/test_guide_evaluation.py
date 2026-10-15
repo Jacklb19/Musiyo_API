@@ -33,3 +33,35 @@ def test_evaluation_reads_selected_database_without_changing_index_or_saving_ans
     assert hashlib.sha256(database.read_bytes()).hexdigest() == before
     with pytest.raises(ValueError):
         evaluate(database, GuideSettings(generation='disabled'), cases)
+
+
+def test_review_is_explicit_and_captures_actual_evidence_with_sequential_observations(guide):
+    database = Path(guide[0].removeprefix("sqlite:///"))
+    cases = [EvaluationCase(id="positive", category="paraphrase",
+                            request=dict(schema_version=1, question="¿Qué instrumentos producen sonido?"),
+                            expected_status="answered", expected_citations=["synthetic-import"]),
+             EvaluationCase(id="negative", category="unsupported",
+                            request=dict(schema_version=1, question="¿Instrumentos en Marte?"),
+                            expected_status="abstained")]
+    review = []
+    report = evaluate(database, GuideSettings(), cases, repeats=2, review=review)
+    assert report["cases"] == 2 and report["observations"] == report["matched"] == 4
+    assert report["latency"]["first_observed"]["samples"] == report["latency"]["repeated"]["samples"] == 2
+    assert report["categories"]["unsupported"] == dict(observations=2, matched=2)
+    assert review[0]["response"]["status"] == "answered"
+    assert review[0]["retrieved_evidence"][0]["text_hash"]
+    assert review[0]["selected_fragment_ids"]
+    assert all(value is None for value in review[0]["human_review"].values())
+    assert review[2]["response"]["answer"] is None and not review[2]["retrieved_evidence"]
+    assert report["database_unchanged"]
+    assert "request" not in report["results"][0] and "answer" not in report["results"][0]
+    for repeats in (0, 6):
+        with pytest.raises(ValueError):
+            evaluate(database, GuideSettings(), cases, repeats=repeats)
+
+
+def test_evaluation_never_implicitly_enables_a_pinned_generator(guide):
+    database = Path(guide[0].removeprefix("sqlite:///"))
+    settings = GuideSettings(generation="ollama", ollama_generation_digest="a" * 64)
+    with pytest.raises(ValueError, match="explicit flag"):
+        evaluate(database, settings, [])

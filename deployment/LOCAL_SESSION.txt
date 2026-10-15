@@ -83,3 +83,21 @@ A zero exit status means expected statuses/citation identifiers matched and the
 selected database hash stayed unchanged. It does not prove cultural correctness or
 answer relevance. Review the actual passages in Web. No import, migration, reindex,
 model pull, generative adapter or external upload is part of this evaluation.
+
+Evidence review and installed generator evaluation
+Use --repeats 2 to collect sequential observations. First observed is not proof of
+cold model residency; measure neutral cold loads separately and record /api/ps.
+--review-output NEW_EXTERNAL_JSON explicitly retains private questions, responses,
+actual adapter evidence, source fingerprints, selected fragment ids and an unfilled
+human review worksheet. The default report still contains no questions/answers.
+Review every claim for support, relevance, attribution and appropriate abstention.
+A status/citation match is never reported as cultural acceptance.
+
+Only after explicit owner authorization, --allow-generative-evaluation accepts an
+external generation=ollama configuration pinned to an already installed digest.
+It does not download, reindex, migrate or change the shared visitor session. Keep
+the rejected 0.6B generator inactive. A failed candidate must not replace the baseline.
+
+Unscoped identity questions prefer the closest matching current title, so a named
+subject is not displaced by a related object that merely mentions it. This changes
+ranking only; index fingerprints and shared contracts remain unchanged.

@@ -6,3 +6,6 @@ GUIDE_QUALIFIERS = {
     "testimony": "Testimonio registrado",
 }
 GUIDE_RATE_LIMIT_MESSAGE = "Demasiadas preguntas. Espera un minuto antes de volver a intentar."
+
+GUIDE_ATTRIBUTION_LABEL = "Atribución"
+GUIDE_CONTEXT_LABEL = "Contexto"

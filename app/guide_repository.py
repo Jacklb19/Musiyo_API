@@ -157,6 +157,8 @@ class GuideRepository:
             lexical = sorted((row for row in rows if row['id'] in current),
                              key=lambda row: (-coverage(query_terms, current[row['id']].text + ' ' + current[row['id']].title),
                                               -int(identity and current[row['id']].kind == 'summary'),
+                                              -coverage(query_terms, current[row['id']].title) if identity else 0,
+                                              len(question_terms(current[row['id']].title)) if identity else 0,
                                               -coverage(query_terms, current[row['id']].text), row['id']))[:settings.candidate_limit]
         scores: dict[str, float] = {}
         candidates = {}
@@ -181,6 +183,8 @@ class GuideRepository:
         if isinstance(embeddings, LocalHashEmbeddings):
             evidence.sort(key=lambda item: (-coverage(query_terms, item.text + ' ' + item.title),
                                             -int(identity and item.kind == 'summary'),
+                                            -coverage(query_terms, item.title) if identity else 0,
+                                            len(question_terms(item.title)) if identity else 0,
                                             -coverage(query_terms, item.text),
                                             -scores[item.fragment_id], item.fragment_id))
         return evidence[:settings.evidence_limit]

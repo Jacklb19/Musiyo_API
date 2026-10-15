@@ -6,7 +6,11 @@ import unicodedata
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from .interface_copy import GUIDE_QUALIFIERS
+from .interface_copy import (
+    GUIDE_ATTRIBUTION_LABEL,
+    GUIDE_CONTEXT_LABEL,
+    GUIDE_QUALIFIERS,
+)
 
 if TYPE_CHECKING:
     from .guide_repository import Evidence
@@ -61,6 +65,19 @@ class Generation(Protocol):
     def generate(self, question: str, evidence: list["Evidence"]) -> GeneratedAnswer: ...
 
 
+def evidence_notes(evidence: list["Evidence"]) -> str:
+    """Keep recorded attribution/context explicit, even when a model omits it."""
+    notes = []
+    for item in evidence:
+        if item.kind in {"testimony", "interpretation"}:
+            notes.append(GUIDE_QUALIFIERS[item.kind] + ".")
+        if item.attribution:
+            notes.append(f'{GUIDE_ATTRIBUTION_LABEL}: {item.attribution.rstrip(". ")}.')
+        if item.context:
+            notes.append(f'{GUIDE_CONTEXT_LABEL}: {item.context.rstrip(". ")}.')
+    return " ".join(dict.fromkeys(notes))
+
+
 class LocalExtractiveGeneration:
     """Quote retrieved text without instructions, new claims or external processing."""
 
@@ -69,10 +86,17 @@ class LocalExtractiveGeneration:
             return GeneratedAnswer(False, "", ())
         item = evidence[0]
         qualifier = GUIDE_QUALIFIERS[item.kind]
-        words = item.text.split()
-        excerpt = ' '.join(words[:90]) + (' …' if len(words) > 90 else '')
         community = f" ({item.community})" if item.community else ""
-        return GeneratedAnswer(True, f'{qualifier}{community}: «{excerpt}»', (item.fragment_id,))
+        prefix = f"{qualifier}{community}:"
+        # Keep recorded testimony attributed and interpretations situated in the answer.
+        suffix = evidence_notes([item])
+        budget = min(90, 118 - len(prefix.split()) - len(suffix.split()))
+        if budget < 8:
+            return GeneratedAnswer(False, "", ())
+        words = item.text.split()
+        excerpt = ' '.join(words[:budget]) + (' …' if len(words) > budget else '')
+        answer = f'{prefix} «{excerpt}»' + (f" {suffix}" if suffix else "")
+        return GeneratedAnswer(True, answer, (item.fragment_id,))
 
 
 class DisabledGeneration:
