@@ -1,0 +1,54 @@
+ADDITIVE RESOURCE DELIVERY
+
+Existing public v1 contracts remain unchanged. Private operations are explicit CLI
+commands; startup never imports, migrates, reindexes or restores a database.
+Select the existing database and matching private storage using normal environment
+configuration, back them up consistently, and inspect a dry-run before application.
+
+append-resources EXTERNAL_MANIFEST [--dry-run]
+  Private operation_version=1: decision, additions, subtitle_links.
+  additions contain element_slug, canonical Resource, ImportFile, and the expected
+  parent SHA-256 for a model variant. Only new IDs are accepted, including after
+  revocation. Published parent ownership/hash, distinct bytes, profile uniqueness,
+  embedded GLB triangles/PNG/JPEG budgets and all normal hash/header/byte checks
+  apply. Quest: <=6,000,000 bytes, <=40,000 triangles, <=1024px embedded textures.
+  This structural gate is not visual fidelity or headset performance acceptance.
+  Each subtitle link names the existing narration, expected audio hash, expected
+  prior link and new subtitle ID. Plain WebVTT must preserve transcript words and
+  punctuation, fit the measured audio duration, and have positive ordered cues.
+  Parent records, old resources/grants, assignments and guide index stay intact;
+  only the narration subtitle link and affected tour revision can change.
+  Local private storage only; S3 must use a separately reviewed delivery path.
+
+import EXTERNAL_MANIFEST --new-elements-only --assignments EXTERNAL_PLAN [--dry-run]
+  Uses existing ContentPackage v1. Refuses any existing element or resource ID.
+  EXTERNAL_PLAN has changes [{point_key, expected, replacement}], each an ordered
+  unique list of element slugs. Compares the current assignments before importing;
+  insertion and assignment replacement share one transaction. Old elements and
+  their grants are preserved. Replacements must be currently published.
+
+reverse-delivery REVIEWED_MANIFEST [--assignments ORIGINAL_PLAN] [--dry-run]
+  Selectively revokes only grants identified by this exact delivery. Subtitle links
+  and point assignments use compare-and-set checks; a later different authorization
+  blocks reversal. Never reactivates old grants or restores a snapshot. Retains
+  resource identities/immutable files for audit. Existing public authorization views
+  invalidate already issued local signed URLs as well as new access requests.
+
+REVIEW TOOLS
+scripts/review-timed-text.html works offline with a selected original MP3, measured
+alignment JSON and optional waveform JSON. It records real media-time marks and
+human review per cue. Draft silence matching is a proposal, not forced alignment.
+No provider, model, inference or upload is involved. It exports reviewed VTT and
+evidence JSON; publication authorization is separate from timing review.
+
+python -m scripts.prepare_subtitles --review REVIEW_JSON (repeat as needed)
+  --decision DECISION_JSON --database EXISTING_DB --output NEW_EXTERNAL_MANIFEST
+Validates all listening marks, reviewer, audio/VTT hashes, exact words and duration;
+reads SQLite in read-only mode and prepares files without importing them.
+
+python -m scripts.prepare_reviewed_resources --draft EXTERNAL_DRAFT
+  --approval EXACT_REVIEW_JSON --output NEW_MANIFEST_BESIDE_DRAFT
+Requires the draft hash and concrete derivative hashes for models, or explicit new
+text/assignment review with the exact plan hash for a new exhibit. It cannot turn
+unreviewed timing proposals into approved subtitles. Local scope and evidence stay
+with the external package; technical tests never establish cultural approval.

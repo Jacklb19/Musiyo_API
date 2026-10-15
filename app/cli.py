@@ -78,6 +78,15 @@ def main(argv=None):
     importer.add_argument("package", help="test-data, museum-test-data, or a private manifest JSON path")
     importer.add_argument("--dry-run", action="store_true")
     importer.add_argument("--resources-only", action="store_true", help="Append selected narrations without replacing records, grants, links or guide index")
+    importer.add_argument("--new-elements-only", action="store_true", help="Refuse replacement of any existing element or resource")
+    importer.add_argument("--assignments", type=Path, help="Reviewed point compare-and-set plan, committed with the import")
+    additions = commands.add_parser("append-resources")
+    additions.add_argument("manifest", type=Path)
+    additions.add_argument("--dry-run", action="store_true")
+    reversal = commands.add_parser("reverse-delivery")
+    reversal.add_argument("manifest", type=Path)
+    reversal.add_argument("--assignments", type=Path)
+    reversal.add_argument("--dry-run", action="store_true")
     revoker = commands.add_parser("revoke")
     targets = revoker.add_mutually_exclusive_group(required=True)
     targets.add_argument("--element")
@@ -103,11 +112,18 @@ def main(argv=None):
             result = {"migrated": True}
         elif args.command == "import":
             if args.package in ("test-data", "museum-test-data"):
-                if args.dry_run or args.resources_only:
+                if args.dry_run or args.resources_only or args.new_elements_only or args.assignments:
                     parser.error("Test datasets do not support package import options")
                 result = import_test_data(dataset=args.package)
             else:
-                result = import_package(Path(args.package), dry_run=args.dry_run, resources_only=args.resources_only)
+                result = import_package(Path(args.package), dry_run=args.dry_run, resources_only=args.resources_only,
+                    new_elements_only=args.new_elements_only, assignments=args.assignments)
+        elif args.command == "append-resources":
+            from .resource_additions import append_resources
+            result = append_resources(args.manifest, dry_run=args.dry_run)
+        elif args.command == "reverse-delivery":
+            from .resource_reversal import reverse_delivery
+            result = reverse_delivery(args.manifest, dry_run=args.dry_run, assignments=args.assignments)
         elif args.command == "revoke":
             result = revoke(args.element or args.resource, resource=bool(args.resource), reason=args.reason)
         elif args.command == "withdraw":

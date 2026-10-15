@@ -90,7 +90,16 @@ def checked_files(package, folder):
     return checked
 
 
-def import_package(manifest: Path, database_url=None, dry_run=False, private_storage=None, resources_only=False):
+def import_package(manifest: Path, database_url=None, dry_run=False, private_storage=None, resources_only=False,
+                   new_elements_only=False, assignments: Path | None = None):
+    from .point_assignments import (
+        PointAssignments,
+        apply_assignments,
+        validate_assignments,
+    )
+    if assignments and (not new_elements_only or resources_only):
+        raise ValueError("Assignments require a new-elements-only import")
+    plan = PointAssignments.model_validate_json(assignments.read_text(encoding="utf-8")) if assignments else None
     manifest = manifest.resolve()
     package = ContentPackage.model_validate_json(manifest.read_text(encoding="utf-8"))
     files = checked_files(package, manifest.parent)
@@ -105,6 +114,14 @@ def import_package(manifest: Path, database_url=None, dry_run=False, private_sto
         raise ValueError("Decision date is in the future")
     with factory() as db:
         try:
+            if new_elements_only:
+                if not package.decision.approved_culturally or package.decision.authorized_from > now or (package.decision.authorized_until is not None and package.decision.authorized_until <= now):
+                    raise ValueError("A reviewed approved decision is required for new elements")
+                if any(db.get(ElementRecord, item.record.slug) is not None for item in package.elements) or any(
+                    db.get(ResourceRecord, resource.id) is not None for item in package.elements for resource in item.record.resources):
+                    raise ValueError("New-elements-only import cannot replace existing content")
+            if plan:
+                validate_assignments(db, plan)
             for item in package.elements:
                 record = item.record
                 for key in item.point_keys:
@@ -195,6 +212,8 @@ def import_package(manifest: Path, database_url=None, dry_run=False, private_sto
                     if existing_ids:
                         db.execute(CONTENT["authorizations"].update().where(CONTENT["authorizations"].c.resource_id.in_(existing_ids))
                             .values(revoked_at=now, revocation_reason="removed_by_import"))
+            if plan:
+                apply_assignments(db, plan, now)
             revisions = {}
             if resources_only:
                 # Capabilities change, while parent records, grants, point links and guide index stay intact.
