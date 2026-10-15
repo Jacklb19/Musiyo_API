@@ -74,3 +74,44 @@ def test_regular_present_number_inflection_supports_a_natural_plural_question(gu
     assert result.status == 'answered'
     assert 'instrumento sintético produce sonido' in result.answer
     assert [citation.element_slug for citation in result.citations] == ['synthetic-import']
+
+
+@pytest.mark.parametrize("kind", ["testimony", "interpretation"])
+def test_extractive_response_keeps_recorded_attribution_and_context(guide, kind):
+    from dataclasses import replace
+
+    from app.guide_adapters import LocalExtractiveGeneration
+    from app.guide_repository import record_evidence
+    from app.public_repository import PublicRepository
+
+    with guide[1]() as db:
+        item = next(record_evidence(PublicRepository(db).element("synthetic-import")))
+    item = replace(item, fragment_id="synthetic-fragment", kind=kind,
+                   attribution="Synthetic contributor", context="Synthetic interview context")
+    result = LocalExtractiveGeneration().generate("Synthetic question", [item])
+    assert result.sufficient
+    assert "Atribución: Synthetic contributor" in result.answer
+    assert "Contexto: Synthetic interview context" in result.answer
+    assert result.fragment_ids == ("synthetic-fragment",)
+    assert len(result.answer.split()) <= 120
+    excessive = replace(item, context="context " * 120)
+    assert not LocalExtractiveGeneration().generate("Synthetic question", [excessive]).sufficient
+
+
+
+def test_unscoped_identity_prefers_the_named_subject_over_a_related_object(guide, tmp_path):
+    from copy import deepcopy
+
+    _, _, service, manifest, value = guide
+    record = value["elements"][0]["record"]
+    record.update(title="El instrumento sintético", description="El instrumento sintético produce sonido durante la prueba.")
+    related = deepcopy(value["elements"][0])
+    related["record"].update(slug="synthetic-related", title="Máscara del instrumento sintético", resources=[], blocks=[],
+                             description="Pieza de prueba identificada como máscara del instrumento sintético.")
+    value["elements"].append(related)
+    manifest.write_text(json.dumps(value), encoding="utf-8")
+    import_package(manifest, guide[0], private_storage=tmp_path / "private")
+    response = service.ask(question("¿Qué es el instrumento sintético?"))
+    assert [citation.element_slug for citation in response.citations] == ["synthetic-import"]
+    response = service.ask(question("¿Qué es la máscara del instrumento sintético?"))
+    assert [citation.element_slug for citation in response.citations] == ["synthetic-related"]

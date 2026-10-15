@@ -29,10 +29,11 @@ Health and stop use the same arguments with -Action health / -Action stop. Stop
 checks process identity and retains models. No questions or prompts are logged by
 Musiyo. Do not expose the raw model port to Web, Quest or the public Internet.
 
-This session does not download models. The existing Qwen Embedding 0.6b can be used
-only after confirming its installed digest against the selected index. Qwen generation
-0.6b is rejected; Qwen 4b partial data stays paused. A future download/evaluation is a
-separate owner decision, never part of session start/health/stop.
+Session start/health/stop never downloads models. The existing Qwen Embedding 0.6b
+can be used only after confirming its installed digest against the selected index.
+The owner authorized completing Qwen 4B and local evaluation on 2026-10-15; it is now
+installed but remains evaluation-only. Generation 0.6B stays rejected. A different
+model/runtime/download remains a separate decision, never part of session startup.
 Inspect GET http://127.0.0.1:11434/api/tags for each installed name and 64-hex digest.
 
 Configuration
@@ -92,3 +93,11 @@ Unity or other owner applications. Keep the PC on AC power, awake and accessible
 The API/PC must be reachable from the visitor's device. Ollama alone does not solve
 public demo networking or continuous availability. The small AWS API proposal is
 not an approved model host, and no GPU cloud resource is provisioned.
+
+Quality gate
+A revised constrained-decoding order improves the installed 4B candidate's answer
+rate, but status/citation matches are not factual acceptance. Recorded attribution
+and context are appended independently of model compliance; the service retains
+its final total length limit. Remaining entity/qualification errors and retrieval
+misses must pass passage-level review before changing the visitor configuration.
+The live session stays lexical/extractive and does not require the model runtime.
