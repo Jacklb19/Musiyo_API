@@ -1,0 +1,30 @@
+NARRATION DELIVERY PREPARATION
+
+Reuse ContentPackage manifest_version=1 and canonical Resource fields. No voice
+endpoint, new public schema or provider activation is introduced. Audit exactly
+one external manifest with:
+  python -m scripts.audit_narrations --manifest EXTERNAL_MANIFEST --output NEW_EXTERNAL_JSON
+This reuses the importer's schema/header/hash/size checks and never imports files.
+WAV duration is measured; other encodings explicitly require a separate media probe.
+
+For a prerecorded narration, select its already published element and stable
+point keys. Prepare the final encoded audio externally, with resource.kind=narration,
+MIME audio/mpeg, audio/wav or audio/ogg, measured duration 0 < seconds <= 180,
+nonblank matching transcription, actual credit and provenance, SHA-256 and byte count.
+Resource budgets still apply (3 MB audio). Where timed text is provided, use a separate
+subtitles resource of MIME text/vtt and the same element's subtitles_resource_id.
+Do not invent timestamps from a script estimate. Preserve pronunciation/meaning
+review and provider processing/voice rights decisions with the final package.
+ElevenLabs Studio is the selected production tool; this task does not upload scripts,
+choose or clone a voice, create audio, fabricate credits or activate TTS/STT.
+
+Before an explicitly selected import, make and verify an external database/storage
+backup. Run the existing import dry-run; inspect the exact resource diff before
+applying the manifest. Preserve current records/decisions and restrictions. A dry-run
+is not publication or renewed authorization for unrelated directories.
+
+Verify API signed resource access, ranges, expiry/revocation and transcript; Web
+keyboard playback, pause/repeat/mute and readable transcript. Unity's maintainer
+checks proximity pause/resume and ambient mix in its closed build. Headset/browser
+listening and final audio acceptance remain separate from package validation.
+Dynamic voice/STT remain later decisions after text answer quality and sources.
