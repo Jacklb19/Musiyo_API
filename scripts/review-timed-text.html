@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Revisar tiempos de narración · Musiyo</title>
+<style>
+:root{color-scheme:light;--paper:#f6efe4;--ink:#1b1420;--line:#cbbca6;--gold:#e3a83b}*{box-sizing:border-box}body{margin:auto;max-width:1100px;padding:24px;background:var(--paper);color:var(--ink);font:17px/1.5 system-ui}h1{font:2rem Georgia}label{display:block;margin:12px 0}input,button{font:inherit;padding:8px;max-width:100%}button{border:1px solid var(--ink);border-radius:5px;background:#fffbf5;cursor:pointer}button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}audio,canvas{width:100%;margin:12px 0}canvas{height:110px;background:#fffbf5}fieldset{border:1px solid var(--line);margin-block:16px;min-width:0}fieldset.active{border:3px solid var(--gold)}.times{display:flex;flex-wrap:wrap;gap:12px}.times input{width:130px}output{display:block;white-space:pre-wrap}.bar{position:sticky;top:0;background:var(--paper);padding:10px 0;border-bottom:1px solid var(--line);z-index:1}.actions{display:flex;gap:12px;flex-wrap:wrap}.hint{font-size:.95rem}p{overflow-wrap:anywhere}
+</style>
+<h1>Revisar tiempos de narración</h1>
+<p>Los cortes propuestos se apoyan en silencios medidos. Escucha cada frase y ajusta sus límites antes de marcarla como revisada. Todo se procesa en este navegador, sin red.</p>
+<label>Alineación JSON <input id="alignment" type="file" accept=".json"></label>
+<label>MP3 original correspondiente <input id="audio-file" type="file" accept="audio/mpeg"></label>
+<label>Forma de onda JSON (opcional) <input id="wave-file" type="file" accept=".json"></label>
+<label>Responsable de la revisión <input id="reviewer" autocomplete="name"></label>
+<output id="status" role="status">Selecciona la alineación y su MP3.</output>
+<div class="bar"><audio id="audio" controls preload="metadata"></audio><output id="clock">00:00.000</output><canvas id="wave" width="1000" height="100" aria-label="Forma de onda del audio"></canvas></div>
+<main id="cues"></main>
+<div class="actions"><button id="export" type="button">Guardar revisión y WebVTT revisado</button><button id="draft" type="button">Guardar avance JSON</button></div>
+<p class="hint">Guardar una revisión de tiempos no publica recursos ni modifica permisos. La aplicación en API se coordina por separado.</p>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),audio=$('audio');let alignment=null,audioHash=null,objectUrl=null,wave=null;
+const report=text=>$('status').textContent=text;
+const digest=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
+const save=(name,text,type)=>{const url=URL.createObjectURL(new Blob([text],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);};
+const stamp=seconds=>{const ms=Math.round(seconds*1000);return `${String(Math.floor(ms/3600000)).padStart(2,'0')}:${String(Math.floor(ms/60000)%60).padStart(2,'0')}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}.${String(ms%1000).padStart(3,'0')}`;};
+function draw(){const canvas=$('wave'),ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);if(!wave)return;ctx.fillStyle='#6b5e57';for(let x=0;x<1000;x++){const amp=Math.min(1,wave.rms[Math.floor(x/1000*wave.rms.length)]*4);ctx.fillRect(x,50-amp*45,1,amp*90);}ctx.fillStyle='#a43525';ctx.fillRect(audio.currentTime/wave.duration*1000,0,2,100);}
+function render(){
+  $('cues').replaceChildren();if(!alignment)return;
+  alignment.cues.forEach((cue,index)=>{
+    const field=document.createElement('fieldset');field.dataset.index=index;
+    const legend=document.createElement('legend');legend.textContent=`Fragmento ${index+1}`;field.append(legend);
+    const text=document.createElement('p');text.textContent=cue.text;field.append(text);
+    const row=document.createElement('div');row.className='times';field.append(row);
+    for(const key of ['start','end']){
+      const label=document.createElement('label');label.textContent=key==='start'?'Inicio (s)':'Fin (s)';
+      const input=document.createElement('input');input.type='number';input.min=0;input.step='.001';input.value=cue[key]??'';
+      input.addEventListener('input',()=>{cue[key]=input.value===''?null:Number(input.value);cue.phrase_identity_reviewed=false;cue.timing_status='manually_adjusted';field.querySelector('[type=checkbox]').checked=false;});label.append(input);row.append(label);
+      const mark=document.createElement('button');mark.type='button';mark.textContent=key==='start'?'Marcar inicio actual':'Marcar fin actual';
+      mark.addEventListener('click',()=>{input.value=audio.currentTime.toFixed(3);input.dispatchEvent(new Event('input'));});row.append(mark);
+    }
+    const play=document.createElement('button');play.type='button';play.textContent='Escuchar desde el inicio';play.addEventListener('click',()=>{if(cue.start!==null){audio.currentTime=cue.start;audio.play().catch(()=>report('Inicia el audio con su control de reproducción.'));}});field.append(play);
+    const review=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=cue.phrase_identity_reviewed===true;
+    check.addEventListener('change',()=>{
+      if(check.checked&&(!audioHash||audioHash!==alignment.audio_sha256||!$('reviewer').value.trim()||cue.start===null||cue.end===null||cue.start<0||cue.end<=cue.start||cue.end>audio.duration+.05)){
+        check.checked=false;report('Verifica el MP3, el responsable y el intervalo antes de revisar.');return;
+      }
+      cue.phrase_identity_reviewed=check.checked;cue.timing_status=check.checked?'human_reviewed':'proposed';cue.reviewer=check.checked?$('reviewer').value.trim():null;cue.reviewed_at=check.checked?new Date().toISOString():null;
+    });review.append(check,document.createTextNode(' He escuchado y revisado esta frase y sus tiempos'));field.append(review);$('cues').append(field);
+  });
+}
+$('alignment').addEventListener('change',async event=>{try{const candidate=JSON.parse(await event.target.files[0].text());if(!Array.isArray(candidate.cues)||!candidate.audio_sha256||!candidate.exact_transcription)throw Error();alignment=candidate;render();report('Alineación cargada. Los tiempos pendientes requieren escucha.');}catch{report('Alineación no válida.');}});
+$('audio-file').addEventListener('change',async event=>{const file=event.target.files[0];if(!file)return;audio.pause();if(objectUrl)URL.revokeObjectURL(objectUrl);audioHash=await digest(await file.arrayBuffer());objectUrl=URL.createObjectURL(file);audio.src=objectUrl;report(alignment&&audioHash===alignment.audio_sha256?'Hash del MP3 verificado.':'El MP3 no coincide con la alineación cargada.');});
+$('wave-file').addEventListener('change',async event=>{try{const value=JSON.parse(await event.target.files[0].text());if(!Array.isArray(value.rms)||!value.duration)throw Error();wave=value;draw();}catch{report('Forma de onda no válida.');}});
+audio.addEventListener('timeupdate',()=>{$('clock').textContent=stamp(audio.currentTime);if(alignment)for(const node of $('cues').children){const cue=alignment.cues[Number(node.dataset.index)];node.classList.toggle('active',audio.currentTime>=cue.start&&audio.currentTime<cue.end);}draw();});
+$('wave').addEventListener('click',event=>{if(wave){const box=event.currentTarget.getBoundingClientRect();audio.currentTime=(event.clientX-box.left)/box.width*audio.duration;}});
+$('draft').addEventListener('click',()=>{if(alignment)save(alignment.resource_id+'.alignment.json',JSON.stringify(alignment,null,2),'application/json');});
+$('export').addEventListener('click',async()=>{
+  if(!alignment||audioHash!==alignment.audio_sha256||!alignment.cues.every((cue,index)=>cue.phrase_identity_reviewed&&cue.reviewer&&cue.start!==null&&cue.end>cue.start&&cue.end<=audio.duration+.05&&(!index||cue.start>=alignment.cues[index-1].end))){report('Faltan frases revisadas o hay intervalos inválidos.');return;}
+  if(alignment.cues.map(c=>c.text).join(' ').split(/\s+/).join(' ')!==alignment.exact_transcription.trim().split(/\s+/).join(' ')){report('Los fragmentos difieren de la transcripción exacta.');return;}
+  const vtt='WEBVTT\n\n'+alignment.cues.map((cue,index)=>`${index+1}\n${stamp(cue.start)} --> ${stamp(cue.end)}\n${cue.text}`).join('\n\n')+'\n';
+  alignment.reviewed_vtt_sha256=await digest(new TextEncoder().encode(vtt));alignment.status='TIMING-REVIEWED-PUBLICATION-SEPARATE';alignment.exported_at=new Date().toISOString();
+  save(alignment.resource_id+'.reviewed.vtt',vtt,'text/vtt');save(alignment.resource_id+'.reviewed.json',JSON.stringify(alignment,null,2),'application/json');report('Revisión exportada. Coordina su aplicación antes de importar.');
+});
+</script></html>
