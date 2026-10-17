@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "tour_key": "synthetic-tour",
+  "room_key": null,
+  "questions": [
+    {
+      "id": "synthetic-quiz-1",
+      "text": "¿Qué ficha contiene «Texto sintético de prueba»?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Ficha sintética A"
+        },
+        {
+          "id": "b",
+          "text": "Ficha sintética B"
+        },
+        {
+          "id": "c",
+          "text": "Ficha sintética C"
+        }
+      ],
+      "element_slug": "synthetic-a",
+      "source_id": "synthetic-source"
+    }
+  ]
+}

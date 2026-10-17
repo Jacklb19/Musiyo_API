@@ -18,6 +18,9 @@ def generate() -> str:
     roots["ValidatorSession"] = json.loads((CONTRACTS / "validator-session.v1.schema.json").read_text(encoding="utf-8"))
     roots["GuideQuestion"] = json.loads((CONTRACTS / "guide-question.v1.schema.json").read_text(encoding="utf-8"))
     roots["GuideResponse"] = json.loads((CONTRACTS / "guide-response.v1.schema.json").read_text(encoding="utf-8"))
+    for name, filename in [('GuideQuiz', 'guide-quiz'), ('GuideQuizAnswer', 'guide-quiz-answer'),
+                           ('GuideQuizAnswerResult', 'guide-quiz-answer-result')]:
+        roots[name] = json.loads((CONTRACTS / f'{filename}.v1.schema.json').read_text(encoding='utf-8'))
     models = {}
     for schema in roots.values():
         models.update(schema.get("$defs", {}))

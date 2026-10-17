@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "synthetic-quiz-1",
+  "correct": true,
+  "explanation": "Texto sintético de prueba",
+  "citation": {
+    "element_slug": "synthetic-a",
+    "source_id": "synthetic-source",
+    "quote": "Texto sintético de prueba"
+  },
+  "source": {
+    "id": "synthetic-source",
+    "kind": "other",
+    "reference": "Fuente sintética de pruebas",
+    "url": null
+  }
+}

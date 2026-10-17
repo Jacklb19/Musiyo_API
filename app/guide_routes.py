@@ -44,6 +44,8 @@ class QuestionLimiter:
 def install_guide_routes(app, service: GuideService):
     limiter = QuestionLimiter(service.settings.questions_per_minute, service.settings.source_limit)
 
+    app.state.guide_limiter = limiter
+
     @app.post('/api/v1/guide/questions', response_model=GuideResponse)
     def question(body: GuideQuestion, request: Request, response: Response):
         if not limiter.accept(request.client.host if request.client else 'unknown'):

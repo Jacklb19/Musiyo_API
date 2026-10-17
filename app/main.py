@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Literal
@@ -27,6 +28,8 @@ from .db import (
 from .guide_routes import install_guide_routes
 from .guide_service import GuideService
 from .public_repository import PublicRepository
+from .quiz_routes import install_quiz_routes
+from .quiz_service import QuizService
 from .resource_storage import ACCESS_SECONDS, LocalDelivery, S3Storage, configured_s3
 from .validator_routes import install_validator_routes
 
@@ -39,6 +42,7 @@ def create_app(
     object_storage: S3Storage | None = None,
     web_origin: str | None = None,
     guide_service: GuideService | None = None,
+    quiz_service: QuizService | None = None,
 ) -> FastAPI:
     factory = session_factory or make_session_factory()
     storage = (private_storage or storage_root()).resolve()
@@ -178,6 +182,8 @@ def create_app(
         return tour
 
     install_guide_routes(app, guide_service or GuideService(factory, now=now))
+    quiz_path = os.environ.get('MUSIYO_QUIZ_BUNDLE')
+    install_quiz_routes(app, quiz_service or QuizService(factory, Path(quiz_path) if quiz_path else None, now), app.state.guide_limiter)
     install_validator_routes(app, factory, now, web_origin)
     return app
 
