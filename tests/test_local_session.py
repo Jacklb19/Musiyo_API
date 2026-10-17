@@ -10,8 +10,8 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL = shutil.which("pwsh")
-WEB = ROOT.parent / "Musiyo_Web"
+SHELL = shutil.which("powershell")
+WEB = Path(os.environ.get("MUSIYO_TEST_WEB_ROOT", str(ROOT.parent / "Web")))
 pytestmark = pytest.mark.skipif(os.name != "nt" or not SHELL or not (WEB / "node_modules/vite/bin/vite.js").exists(), reason="Windows session integration needs installed API/Web dependencies")
 
 
@@ -29,7 +29,15 @@ def session_config(tmp_path):
 
 
 def run_session(path, action):
-    return subprocess.run([SHELL, "-NoProfile", "-File", str(ROOT / "scripts/local-session.ps1"), "-Action", action, "-Config", str(path)], capture_output=True, text=True, timeout=20)
+    # Background descendants can inherit pipe handles on Windows. Capture to files
+    # so completion waits for the launcher process rather than server pipe EOF.
+    command = [SHELL, '-NoProfile', '-File', str(ROOT / 'scripts/local-session.ps1'), '-Action', action, '-Config', str(path)]
+    out_path, err_path = path.parent / (action + '.out'), path.parent / (action + '.err')
+    with out_path.open('w') as out, err_path.open('w') as err:
+        result = subprocess.run(command, stdout=out, stderr=err, timeout=60,
+            env={key: value for key, value in os.environ.items() if key != 'PSModulePath'})
+    return subprocess.CompletedProcess(command, result.returncode,
+        out_path.read_text(errors='replace'), err_path.read_text(errors='replace'))
 
 
 def test_selected_configuration_rejects_remote_origins_and_unknown_fields(session_config):
@@ -63,3 +71,33 @@ def test_stop_rejects_reused_pid_identity_before_stopping_any_process(session_co
     assert result.returncode != 0
     assert "Process identity changed" in result.stderr
     assert (state / "session-state.json").exists()
+
+
+def test_isolated_start_health_stop_preserves_database(session_config):
+    from app.cli import import_test_data
+    from app.migrations import upgrade_database
+
+    path, config = session_config
+    database = path.parent / 'isolated-full.db'
+    config['database_path'] = database.name
+    url = 'sqlite:///' + database.as_posix()
+    upgrade_database(url)
+    import_test_data(url, 'museum-test-data')
+    with socket.socket() as api_socket, socket.socket() as web_socket:
+        api_socket.bind(('127.0.0.1', 0))
+        web_socket.bind(('127.0.0.1', 0))
+        config['api_origin'] = 'http://127.0.0.1:' + str(api_socket.getsockname()[1])
+        config['web_origin'] = 'http://127.0.0.1:' + str(web_socket.getsockname()[1])
+    path.write_text(json.dumps(config))
+    digest = hashlib.sha256(database.read_bytes()).hexdigest()
+    try:
+        started = run_session(path, 'start')
+        assert started.returncode == 0, started.stdout + started.stderr
+        health = run_session(path, 'health')
+        assert health.returncode == 0, health.stderr
+    finally:
+        if (path.parent / 'state/session-state.json').exists():
+            stopped = run_session(path, 'stop')
+            assert stopped.returncode == 0, stopped.stderr
+    assert not (path.parent / 'state/session-state.json').exists()
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == digest

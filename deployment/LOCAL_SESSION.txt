@@ -101,3 +101,14 @@ the rejected 0.6B generator inactive. A failed candidate must not replace the ba
 Unscoped identity questions prefer the closest matching current title, so a named
 subject is not displaced by a related object that merely mentions it. This changes
 ranking only; index fingerprints and shared contracts remain unchanged.
+
+Windows PowerShell 5.1: selected guide/database inspection uses a Python module;
+there is no nested python -c quoting. Run validation before session start:
+  powershell -NoProfile -File scripts/local-session.ps1 -Action validate -Config EXTERNAL_SESSION_JSON
+  powershell -NoProfile -File scripts/local-session.ps1 -Action start -Config EXTERNAL_SESSION_JSON
+Use health/stop with the same configuration. Do not replace state from old runs.
+
+Contract export uses existing explicit checkouts, never inferred sibling names:
+  python -m scripts.sync_contracts --target web --web WEB_CHECKOUT
+Unity's owner runs --target unity --unity UNITY_CHECKOUT. All destinations are
+validated before copying. The API/Web operator does not write to Unity.

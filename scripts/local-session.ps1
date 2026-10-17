@@ -43,35 +43,25 @@ $apiOrigin = $apiUri.GetLeftPart([UriPartial]::Authority)
 $webOrigin = $webUri.GetLeftPart([UriPartial]::Authority)
 $python = Join-Path $apiRoot '.venv/Scripts/python.exe'
 $node = (Get-Command node -ErrorAction Stop).Source
-# Apply the same model configuration validation as the API, without starting providers.
+# Pass source as a module, preserving arguments in Windows PowerShell 5.1.
 Push-Location -LiteralPath $apiRoot
 try {
-    & $python -c 'import json,sys; from app.guide_config import GuideSettings; GuideSettings.model_validate(json.load(open(sys.argv[1], encoding="utf-8-sig")))' $guide
+    & $python -m scripts.inspect_session guide $guide
     if ($LASTEXITCODE -ne 0) { throw 'Invalid selected guide configuration.' }
+    $selectedSlugs = @(& $python -m scripts.inspect_session database $database | ConvertFrom-Json)
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot read the selected publication database.' }
 } finally { Pop-Location }
-# Read only: identify the selected publication database before using any server.
-$inspectDatabase = @"
-import json, sqlite3, sys
-from pathlib import Path
-with sqlite3.connect(Path(sys.argv[1]).as_uri() + '?mode=ro', uri=True) as db:
-    from datetime import datetime, timezone
-    db.create_function('musiyo_now', 0, lambda: datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S.%f'))
-    revision = db.execute('select version_num from alembic_version').fetchone()
-    if revision != ('0005',):
-        raise ValueError('Selected database needs an explicit migration')
-    print(json.dumps(sorted(row[0] for row in db.execute('select id from v_current_elements'))))
-"@
-$selectedSlugs = @(& $python -c $inspectDatabase $database | ConvertFrom-Json)
-if ($LASTEXITCODE -ne 0) { throw 'Cannot read the selected publication database.' }
 $vite = Join-Path $webRoot 'node_modules/vite/bin/vite.js'
 if (-not (Test-Path -LiteralPath $python) -or -not (Test-Path -LiteralPath $vite)) { throw 'Install the existing repository dependencies first.' }
 $guideSettings = Get-Content -LiteralPath $guide -Raw | ConvertFrom-Json
 if ($guideSettings.generation -ne 'local') { throw 'This session requires the accepted extractive generation adapter.' }
 $statePath = Join-Path $stateDirectory 'session-state.json'
 # Bind state to the selected configuration, without storing secrets or question text.
-$configHash = (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash
+$hasher = [Security.Cryptography.SHA256]::Create()
+try { $configHash = [BitConverter]::ToString($hasher.ComputeHash([IO.File]::ReadAllBytes($configPath))).Replace('-', '') }
+finally { $hasher.Dispose() }
 function Get-Listener([int]$Port) {
-    return @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+    return @([Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners() | Where-Object { $_.Port -eq $Port })
 }
 function Get-Identity([int]$ProcessId) {
     for ($identityAttempt = 0; $identityAttempt -lt 20; $identityAttempt++) {
@@ -152,8 +142,8 @@ if ($Action -eq 'health') {
     exit
 }
 if (Test-Path -LiteralPath $statePath) { throw 'Session state exists. Run health or stop before starting again.' }
-if ((Get-Listener $webUri.Port).Count) { throw 'Web port is occupied; no service was changed.' }
-$apiBusy = (Get-Listener $apiUri.Port).Count -gt 0
+if (@(Get-Listener $webUri.Port).Count) { throw 'Web port is occupied; no service was changed.' }
+$apiBusy = @(Get-Listener $apiUri.Port).Count -gt 0
 if ($apiBusy -and -not $settings.reuse_existing_api) { throw 'API port is occupied. Reuse requires explicit configuration after verifying the existing service.' }
 if ($settings.reuse_existing_api -and -not $apiBusy) { throw 'Expected existing API is absent. Review configuration before starting an owned API.' }
 if ($apiBusy) {
@@ -186,7 +176,7 @@ try {
         $owned += Get-Identity $process.Id
     } finally { $env:MUSIYO_DEV_API_TARGET = $previousTarget }
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
-        if ((Get-Listener $apiUri.Port).Count -and (Get-Listener $webUri.Port).Count) { break }
+        if (@(Get-Listener $apiUri.Port).Count -and @(Get-Listener $webUri.Port).Count) { break }
         Start-Sleep -Milliseconds 500
     }
     foreach ($root in $roots) { $owned += Get-OwnedTree $root }
