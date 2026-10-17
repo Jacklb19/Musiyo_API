@@ -74,9 +74,10 @@ def test_stop_rejects_reused_pid_identity_before_stopping_any_process(session_co
 
 
 def test_isolated_start_health_stop_preserves_database(session_config):
+    from test_content_operations import package_fixture
+
     from app.cli import import_test_data
     from app.content_operations import import_package
-    from test_content_operations import package_fixture
 
     path, config = session_config
     url, manifest, _ = package_fixture(path.parent)
