@@ -75,13 +75,14 @@ def test_stop_rejects_reused_pid_identity_before_stopping_any_process(session_co
 
 def test_isolated_start_health_stop_preserves_database(session_config):
     from app.cli import import_test_data
-    from app.migrations import upgrade_database
+    from app.content_operations import import_package
+    from test_content_operations import package_fixture
 
     path, config = session_config
-    database = path.parent / 'isolated-full.db'
+    url, manifest, _ = package_fixture(path.parent)
+    database = path.parent / 'content.db'
     config['database_path'] = database.name
-    url = 'sqlite:///' + database.as_posix()
-    upgrade_database(url)
+    import_package(manifest, url, private_storage=path.parent / 'private')
     import_test_data(url, 'museum-test-data')
     with socket.socket() as api_socket, socket.socket() as web_socket:
         api_socket.bind(('127.0.0.1', 0))

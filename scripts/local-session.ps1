@@ -48,7 +48,7 @@ Push-Location -LiteralPath $apiRoot
 try {
     & $python -m scripts.inspect_session guide $guide
     if ($LASTEXITCODE -ne 0) { throw 'Invalid selected guide configuration.' }
-    $selectedSlugs = @(& $python -m scripts.inspect_session database $database | ConvertFrom-Json)
+    $selectedSlugs = @(& $python -m scripts.inspect_session database $database | ConvertFrom-Json | ForEach-Object { $_ })
     if ($LASTEXITCODE -ne 0) { throw 'Cannot read the selected publication database.' }
 } finally { Pop-Location }
 $vite = Join-Path $webRoot 'node_modules/vite/bin/vite.js'
