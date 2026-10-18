@@ -31,6 +31,7 @@ class ResourceAddition(ContractModel):
     element_slug: Identifier
     resource: Resource
     file: ImportFile
+    source_model_id: Identifier | None = None
     expected_parent_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
@@ -66,12 +67,16 @@ def append_resources(manifest: Path, database_url=None, dry_run=False, private_s
         raise ValueError("Repeated addition or subtitle link")
     for item in package.additions:
         resource = item.resource
-        if resource.kind not in {"model_3d", "subtitles"} or resource.subtitles_resource_id or resource.variants:
-            raise ValueError("Only new model variants and subtitle resources are supported")
+        if resource.kind not in {"model_3d", "subtitles", "image"} or resource.subtitles_resource_id or resource.variants:
+            raise ValueError("Only new model variants, traced thumbnails and subtitle resources are supported")
         if resource.kind == "model_3d" and (not item.file.variant_of or item.file.profile not in {"web", "quest"}):
             raise ValueError("A model addition requires an existing parent and explicit profile")
         if resource.kind == "subtitles" and (item.file.variant_of or item.file.profile != "general"):
             raise ValueError("Subtitles require the general profile")
+        if resource.kind == "image" and (not item.source_model_id or not item.expected_parent_sha256 or item.file.variant_of or item.file.profile != "general"):
+            raise ValueError("A thumbnail requires a source model, expected hash and general profile")
+        if resource.kind != "image" and item.source_model_id:
+            raise ValueError("Source model references belong to thumbnails only")
         validation_file = item.file.model_dump()
         validation_file["variant_of"] = None
         value = {"manifest_version": 1, "decision": package.decision.model_dump(mode="json"),
@@ -113,6 +118,12 @@ def append_resources(manifest: Path, database_url=None, dry_run=False, private_s
                     if parent.profile == definition.profile or db.scalar(sa.select(ResourceRecord.id).where(
                         ResourceRecord.variant_of == parent.id, ResourceRecord.profile == definition.profile)):
                         raise ValueError("A variant profile already exists, including withdrawn variants")
+                if resource.kind == "image":
+                    parent = db.get(ResourceRecord, item.source_model_id)
+                    available = {variant["id"] for root in current.resources for variant in
+                        ([{"id": root.id}] + [variant.model_dump() for variant in root.variants])}
+                    if parent is None or parent.id not in available or parent.kind != "model_3d" or parent.element_id != item.element_slug or parent.sha256 != item.expected_parent_sha256:
+                        raise ValueError("Thumbnail source model must still be published with the expected hash")
                 path, size, object_key = checked[resource.id]
                 if resource.kind == "model_3d":
                     audit_glb(path, definition.profile)

@@ -11,7 +11,13 @@ from test_content_operations import package_fixture
 
 from app.content_operations import import_package, revoke
 from app.content_tables import CONTENT
-from app.db import PointElementRecord, ResourceRecord, TourRecord, make_session_factory, utc_now
+from app.db import (
+    PointElementRecord,
+    ResourceRecord,
+    TourRecord,
+    make_session_factory,
+    utc_now,
+)
 from app.main import create_app
 from app.resource_additions import append_resources
 from app.timed_text import parse_vtt
@@ -233,3 +239,54 @@ def test_subtitle_preparation_refuses_unreviewed_audio_alignment(tmp_path):
     with pytest.raises(ValueError, match='Every phrase'):
         prepare_subtitles([review], decision, tmp_path / 'content.db', output)
     assert not output.exists()
+
+
+@pytest.mark.parametrize('failure', [None, 'hash', 'withdrawn', 'other_element'])
+def test_thumbnail_append_requires_current_exact_source_and_preserves_records(tmp_path, failure):
+    import base64
+    url, manifest, initial = package_fixture(tmp_path)
+    model = {'id': 'model-web', 'kind': 'model_3d', 'mime': 'model/gltf-binary', 'alternative_text': 'Synthetic model', 'credit': 'Test', 'provenance': 'Synthetic'}
+    data = glb(2)
+    (tmp_path / 'web.glb').write_bytes(data)
+    sha = hashlib.sha256(data).hexdigest()
+    initial['elements'][0]['record']['resources'] = [model]
+    initial['files'] = {'model-web': {'file': 'web.glb', 'sha256': sha, 'profile': 'web'}}
+    manifest.write_text(json.dumps(initial), encoding='utf-8')
+    storage = tmp_path / 'private'
+    import_package(manifest, url, private_storage=storage)
+    png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=')
+    (tmp_path / 'thumbnail.png').write_bytes(png)
+    value = {'operation_version': 1, 'decision': initial['decision'], 'additions': [{
+        'element_slug': 'synthetic-import', 'source_model_id': 'model-web', 'expected_parent_sha256': sha,
+        'resource': {'id': 'thumbnail-new', 'kind': 'image', 'mime': 'image/png', 'alternative_text': 'Synthetic thumbnail', 'credit': 'Test', 'provenance': 'Rendered from synthetic model'},
+        'file': {'file': 'thumbnail.png', 'sha256': hashlib.sha256(png).hexdigest()}}]}
+    if failure == 'hash':
+        value['additions'][0]['expected_parent_sha256'] = '0' * 64
+    if failure == 'withdrawn':
+        revoke('model-web', resource=True, database_url=url)
+    if failure == 'other_element':
+        with make_session_factory(url).begin() as db:
+            from app.db import ElementRecord
+            db.add(ElementRecord(id='not-this-record', title='Other synthetic record', description='Test'))
+            db.flush()
+            db.get(ResourceRecord, 'model-web').element_id = 'not-this-record'
+    patch = tmp_path / 'thumbnail-additions.json'
+    patch.write_text(json.dumps(value), encoding='utf-8')
+    before = snapshot(url)
+    if failure:
+        with pytest.raises(ValueError, match='source model'):
+            append_resources(patch, url, private_storage=storage)
+        assert snapshot(url) == before
+        return
+    append_resources(patch, url, dry_run=True, private_storage=storage)
+    assert snapshot(url) == before
+    append_resources(patch, url, private_storage=storage)
+    after = snapshot(url)
+    for key in before:
+        assert after[key][:len(before[key])] == before[key]
+    client = TestClient(create_app(make_session_factory(url), private_storage=storage))
+    catalog = client.get('/api/v1/catalog?schema_version=1').json()
+    assert catalog['items'][0]['thumbnail_resource_id'] == 'thumbnail-new'
+    assert client.get('/api/v1/elements/synthetic-import/resources/thumbnail-new').content == png
+    revoke('synthetic-import', database_url=url)
+    assert client.get('/api/v1/elements/synthetic-import/resources/thumbnail-new').status_code == 404

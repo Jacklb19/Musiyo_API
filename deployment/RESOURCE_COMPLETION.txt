@@ -52,3 +52,14 @@ Requires the draft hash and concrete derivative hashes for models, or explicit n
 text/assignment review with the exact plan hash for a new exhibit. It cannot turn
 unreviewed timing proposals into approved subtitles. Local scope and evidence stay
 with the external package; technical tests never establish cultural approval.
+
+MODEL-DERIVED CATALOGUE THUMBNAILS
+An image addition requires source_model_id and expected_parent_sha256, profile
+general, and no variant_of. Its source must be a currently public model of the
+same element with the expected hash. Normal MIME/header/hash/byte/alternative-text
+validation and the explicit publication decision still apply. Store rendering
+method and source/hash in ImportFile paradata; copy the actual model credit and
+retain element restrictions. A rendered image is not a new independent capture.
+The operation adds a new image resource; it never rewrites the source model,
+element metadata, prior grants or guide index. Reverse only that delivery with
+reverse-delivery; never reactivate historical authorizations from a backup.
