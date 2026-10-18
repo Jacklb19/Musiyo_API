@@ -7,8 +7,9 @@ $apiRoot = (Resolve-Path (Split-Path $PSScriptRoot -Parent)).Path
 $configPath = (Resolve-Path -LiteralPath $Config).Path
 $settings = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $fields = @('schema_version', 'database_path', 'storage_root', 'guide_config', 'api_origin', 'web_origin', 'web_root', 'state_directory', 'reuse_existing_api')
+$optionalFields = @('quiz_bundle_path')
 foreach ($field in $settings.PSObject.Properties.Name) {
-    if ($field -notin $fields) { throw "Unknown session field: $field" }
+    if ($field -notin $fields -and $field -notin $optionalFields) { throw "Unknown session field: $field" }
 }
 foreach ($field in $fields) {
     if ($field -notin $settings.PSObject.Properties.Name) { throw "Missing session field: $field" }
@@ -22,8 +23,10 @@ $webRoot = (Resolve-Path -LiteralPath (Resolve-SelectedPath $settings.web_root))
 $database = (Resolve-Path -LiteralPath (Resolve-SelectedPath $settings.database_path)).Path
 $storage = (Resolve-Path -LiteralPath (Resolve-SelectedPath $settings.storage_root)).Path
 $guide = (Resolve-Path -LiteralPath (Resolve-SelectedPath $settings.guide_config)).Path
+$quizBundle = $null
+if ('quiz_bundle_path' -in $settings.PSObject.Properties.Name) { $quizBundle = (Resolve-Path -LiteralPath (Resolve-SelectedPath $settings.quiz_bundle_path)).Path }
 $stateDirectory = Resolve-SelectedPath $settings.state_directory
-foreach ($path in @($configPath, $database, $storage, $guide, $stateDirectory)) {
+foreach ($path in @($configPath, $database, $storage, $guide, $stateDirectory) + @($quizBundle | Where-Object { $_ })) {
     foreach ($repo in @($apiRoot, $webRoot)) {
         if ($path.Equals($repo, [StringComparison]::OrdinalIgnoreCase) -or $path.StartsWith($repo + '\', [StringComparison]::OrdinalIgnoreCase)) {
             throw 'Session settings, data, resources and process state must stay outside repositories.'
@@ -48,6 +51,10 @@ Push-Location -LiteralPath $apiRoot
 try {
     & $python -m scripts.inspect_session guide $guide
     if ($LASTEXITCODE -ne 0) { throw 'Invalid selected guide configuration.' }
+    if ($quizBundle) {
+        & $python -m scripts.inspect_session quiz $quizBundle
+        if ($LASTEXITCODE -ne 0) { throw 'Invalid selected quiz bundle.' }
+    }
     $selectedSlugs = @(& $python -m scripts.inspect_session database $database | ConvertFrom-Json | ForEach-Object { $_ })
     if ($LASTEXITCODE -ne 0) { throw 'Cannot read the selected publication database.' }
 } finally { Pop-Location }
@@ -161,6 +168,7 @@ try {
         # Reuse the established foreground API launcher; no migration, import or indexing.
         $launcher = Join-Path $PSScriptRoot 'start-local-api.ps1'
         $command = "& '$($launcher.Replace("'", "''"))' -DatabasePath '$($database.Replace("'", "''"))' -StorageRoot '$($storage.Replace("'", "''"))' -GuideConfig '$($guide.Replace("'", "''"))' -WebOrigin '$webOrigin' -Port $($apiUri.Port)"
+        if ($quizBundle) { $command += " -QuizBundle '$($quizBundle.Replace("'", "''"))'" }
         $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
         $shell = (Get-Process -Id $PID).Path
         $process = Start-Process $shell -ArgumentList @('-NoProfile', '-EncodedCommand', $encoded) -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $stateDirectory 'api.log') -RedirectStandardError (Join-Path $stateDirectory 'api-error.log')

@@ -112,3 +112,12 @@ Contract export uses existing explicit checkouts, never inferred sibling names:
   python -m scripts.sync_contracts --target web --web WEB_CHECKOUT
 Unity's owner runs --target unity --unity UNITY_CHECKOUT. All destinations are
 validated before copying. The API/Web operator does not write to Unity.
+
+OPTIONAL REVIEWED QUIZ SELECTION
+The external session JSON may include quiz_bundle_path, absolute or relative to
+that JSON. The selected file must exist outside the repositories and validate as
+QuizBundle. local-session passes it explicitly to start-local-api -QuizBundle;
+the launcher restores its prior process environment after exit. Omitting it
+starts with no quiz bundle, regardless of an inherited MUSIYO_QUIZ_BUNDLE.
+Changing session settings requires stopping the owned session under its original
+configuration before saving the new selection. Preserve a dated config backup.

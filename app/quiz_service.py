@@ -23,7 +23,9 @@ from .quiz_contracts import (
 class QuizDraft(ContractModel):
     question: QuizQuestion
     state: Literal['draft', 'reviewed'] = 'draft'
-    option_elements: dict[str, Identifier]
+    question_style: Literal['record_recognition', 'comprehension'] = 'record_recognition'
+    evidence_kind: Literal['documented_fact', 'interpretation'] = 'documented_fact'
+    option_elements: dict[str, Identifier] = Field(default_factory=dict)
     correct_option_id: Identifier
     explanation: str = Field(min_length=1, max_length=1200)
     evidence_hash: str = Field(pattern=r'^[a-f0-9]{64}$')
@@ -32,10 +34,13 @@ class QuizDraft(ContractModel):
 
     @model_validator(mode='after')
     def validate_review(self):
-        if set(self.option_elements) != {option.id for option in self.question.options}:
-            raise ValueError('Each option needs a current record')
-        if self.option_elements.get(self.correct_option_id) != self.question.element_slug:
-            raise ValueError('Correct option must identify the cited record')
+        if self.question_style == 'record_recognition':
+            if self.evidence_kind != 'documented_fact' or set(self.option_elements) != {option.id for option in self.question.options}:
+                raise ValueError('Each recognition option needs a current record')
+            if self.option_elements.get(self.correct_option_id) != self.question.element_slug:
+                raise ValueError('Correct recognition option must identify the cited record')
+        elif self.option_elements:
+            raise ValueError('Comprehension options are reviewed answers, not record titles')
         if self.correct_option_id not in {option.id for option in self.question.options}:
             raise ValueError('Correct option must exist')
         if self.state == 'reviewed':
@@ -78,21 +83,25 @@ class QuizService:
         slugs = {element.slug for room in tour.rooms if room_key is None or room.key == room_key
                  for point in room.points for element in point.elements}
         question = draft.question
-        if question.element_slug not in slugs or draft.state != 'reviewed':
+        # A reviewed museum-wide comprehension question may cite a catalogue record
+        # without a spatial anchor. Room-scoped requests remain strictly spatial.
+        if draft.state != 'reviewed' or (question.element_slug not in slugs and
+                (room_key is not None or draft.question_style != 'comprehension')):
             return None
         if question.element_slug not in set(db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id))):
             return None
         allowed = set(db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id)))
-        for option in question.options:
-            slug = draft.option_elements[option.id]
-            candidate = public.element(slug) if slug in allowed else None
-            if candidate is None or candidate.title != option.text:
-                return None
+        if draft.question_style == 'record_recognition':
+            for option in question.options:
+                slug = draft.option_elements[option.id]
+                candidate = public.element(slug) if slug in allowed else None
+                if candidate is None or candidate.title != option.text:
+                    return None
         record = public.element(question.element_slug)
         if record is None:
             return None
         evidence = next((item for item in record_evidence(record)
-                         if item.kind == 'documented_fact' and item.source_id == question.source_id
+                         if item.kind == draft.evidence_kind and item.source_id == question.source_id
                          and item.source_reference and item.text_hash == draft.evidence_hash), None)
         source = next((item for item in record.sources if item.id == question.source_id), None)
         return (evidence, source) if evidence and source else None

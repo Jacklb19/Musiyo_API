@@ -6,13 +6,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.guide_config import GuideSettings
+from app.quiz_service import QuizBundle
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('kind', choices=('guide', 'database'))
+    parser.add_argument('kind', choices=('guide', 'database', 'quiz'))
     parser.add_argument('path', type=Path)
     args = parser.parse_args()
+    if args.kind == 'quiz':
+        QuizBundle.model_validate_json(args.path.read_text(encoding='utf-8-sig'))
+        return
     if args.kind == 'guide':
         GuideSettings.model_validate_json(args.path.read_text(encoding='utf-8-sig'))
         return

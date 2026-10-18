@@ -19,12 +19,24 @@ person and reviewed_at to the actual timezone-aware timestamp. Keep rejected
 questions in draft. Do not manufacture a reviewer or auto-promote drafts.
 The external review HTML is a convenience, never cultural acceptance by itself.
 Select the reviewed external file via MUSIYO_QUIZ_BUNDLE before starting the API.
+The local launcher accepts -QuizBundle; local-session.json accepts the optional
+quiz_bundle_path. An explicit selection is validated before starting any service.
 Unset configuration returns an empty quiz. A malformed selected bundle fails
 closed. No database migration, import, reindex or live write is required.
 
-Every GET and answer reloads the file, checks the tour/room association, current
-assistant authorization for the source and every option record, current option
-titles and exact evidence/source fingerprint. Changes/revocations remove stale
+Private reviewed authoring also supports question_style=comprehension, with
+empty option_elements and manually reviewed answer texts. evidence_kind defaults
+to documented_fact; an explicitly reviewed interpretation may be cited with its
+source and context. This does not change the public v1 question/answer contracts.
+The answer key and review metadata remain in the external operator bundle.
+
+Every GET and answer reloads the file and checks current source-element assistant
+authorization and the exact evidence/source fingerprint. Recognition questions
+also recheck every option record and its title. Comprehension questions can cite
+currently authorized catalogue records without a spatial anchor when no room
+filter is requested; a room_key always restricts sources to that room. A hearth
+conversation about the whole museum requests the tour without room_key.
+The selected tour must still be public and match the bundle. Changes/revocations remove stale
 questions and return 404 for their answers. The public GET never sends the key.
 Only the answer POST supplies correctness, explanation, exact quote and source.
 No score, visitor identity, answer history or question logging is stored.

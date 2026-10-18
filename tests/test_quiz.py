@@ -119,3 +119,68 @@ def test_quiz_schemas_and_examples_are_canonical():
         example = json.loads((contracts / 'examples' / (name.replace('-', '_') + '.json')).read_text(encoding='utf-8'))
         Draft202012Validator(schema).validate(example)
         model.model_validate(example)
+
+
+@pytest.mark.parametrize('change', ['permission', 'correction', 'source', 'withdrawal'])
+def test_reviewed_comprehension_keeps_custom_answers_and_rechecks_evidence(quiz, change):
+    client, bundle, path, factory = quiz
+    value = bundle.model_dump()
+    draft = value['questions'][0]
+    draft.update(question_style='comprehension', option_elements={})
+    draft['question']['text'] = 'What does this synthetic example help us understand?'
+    draft['question']['options'] = [{'id': 'a', 'text': 'Supported synthetic answer'}, {'id': 'b', 'text': 'A different answer'}, {'id': 'c', 'text': 'Third answer'}]
+    draft['correct_option_id'] = 'a'
+    draft.update(state='reviewed', reviewed_by='Synthetic reviewer', reviewed_at=datetime.now(timezone.utc).isoformat())
+    path.write_text(json.dumps(value), encoding='utf-8')
+    query = '/api/v1/guide/quiz?tour_key=recorrido-prueba'
+    response = client.get(query).json()
+    assert len(response['questions']) == 1
+    assert response['questions'][0]['options'][0]['text'] == 'Supported synthetic answer'
+    answer = dict(schema_version=1, id=draft['question']['id'], option_id='a')
+    assert client.post('/api/v1/guide/quiz/answers', json=answer).json()['correct'] is True
+    assert 'correct_option_id' not in client.get(query).text
+    with factory.begin() as db:
+        if change == 'permission':
+            db.execute(CONTENT['authorizations'].update().values(allow_assistant=False))
+        elif change == 'correction':
+            db.execute(CONTENT['detail_blocks'].update().values(text='Changed evidence'))
+        elif change == 'source':
+            db.execute(CONTENT['sources'].update().values(reference='Changed source'))
+        else:
+            db.execute(sa.text('update tours set published=0'))
+    assert client.get(query).json()['questions'] == []
+    assert client.post('/api/v1/guide/quiz/answers', json=answer).status_code == 404
+
+
+def test_comprehension_is_private_draft_until_human_review_and_requires_known_answer(quiz):
+    client, bundle, path, _ = quiz
+    value = bundle.model_dump()
+    draft = value['questions'][0]
+    draft.update(question_style='comprehension', option_elements={})
+    draft['question']['options'] = [{'id': 'a', 'text': 'One answer'}, {'id': 'b', 'text': 'Other answer'}, {'id': 'c', 'text': 'Third answer'}]
+    draft['correct_option_id'] = 'a'
+    path.write_text(json.dumps(value), encoding='utf-8')
+    assert client.get('/api/v1/guide/quiz?tour_key=recorrido-prueba').json()['questions'] == []
+    draft['correct_option_id'] = 'unknown'
+    with pytest.raises(ValidationError):
+        QuizBundle.model_validate(value)
+
+
+def test_reviewed_comprehension_can_cite_catalogue_without_adding_an_anchor(quiz):
+    client, bundle, path, factory = quiz
+    value = bundle.model_dump()
+    value['questions'] = value['questions'][:1]
+    draft = value['questions'][0]
+    draft.update(question_style='comprehension', option_elements={}, state='reviewed', reviewed_by='Synthetic reviewer', reviewed_at=datetime.now(timezone.utc).isoformat())
+    path.write_text(json.dumps(value), encoding='utf-8')
+    with factory.begin() as db:
+        from app.db import PointElementRecord
+        db.execute(sa.delete(PointElementRecord).where(PointElementRecord.element_id == draft['question']['element_slug']))
+    query = '/api/v1/guide/quiz?tour_key=recorrido-prueba'
+    assert len(client.get(query).json()['questions']) == 1
+    assert client.get(query + '&room_key=sala-01').json()['questions'] == []
+    answer = dict(schema_version=1, id=draft['question']['id'], option_id=draft['correct_option_id'])
+    assert client.post('/api/v1/guide/quiz/answers', json=answer).json()['correct'] is True
+    with factory.begin() as db:
+        db.execute(CONTENT['authorizations'].update().values(allow_assistant=False))
+    assert client.get(query).json()['questions'] == []

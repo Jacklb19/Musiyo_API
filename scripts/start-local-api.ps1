@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory = $true)][string]$StorageRoot,
     [string]$WebOrigin = 'http://localhost:5174',
     [string]$GuideConfig,
+    [string]$QuizBundle,
     [ValidateRange(1, 65535)][int]$Port = 8000
 )
 
@@ -20,7 +21,7 @@ if (-not $originUri.IsAbsoluteUri -or $originUri.Scheme -notin 'http', 'https' -
 $pythonPath = Join-Path $apiRoot '.venv/Scripts/python.exe'
 if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) { throw 'Install the API development virtual environment first.' }
 
-$variableNames = @('MUSIYO_DATABASE_URL', 'MUSIYO_STORAGE_ROOT', 'MUSIYO_STORAGE_BACKEND', 'MUSIYO_WEB_ORIGIN', 'MUSIYO_GUIDE_CONFIG')
+$variableNames = @('MUSIYO_DATABASE_URL', 'MUSIYO_STORAGE_ROOT', 'MUSIYO_STORAGE_BACKEND', 'MUSIYO_WEB_ORIGIN', 'MUSIYO_GUIDE_CONFIG', 'MUSIYO_QUIZ_BUNDLE')
 $variableNames += @(Get-ChildItem Env:MUSIYO_GUIDE_* | ForEach-Object Name)
 $previousValues = @{}
 foreach ($name in ($variableNames | Select-Object -Unique)) {
@@ -33,6 +34,12 @@ try {
         if ($name -like 'MUSIYO_GUIDE_*') { [Environment]::SetEnvironmentVariable($name, $null, 'Process') }
     }
     if ($GuideConfig) { $env:MUSIYO_GUIDE_CONFIG = (Resolve-Path -LiteralPath $GuideConfig).Path }
+    $env:MUSIYO_QUIZ_BUNDLE = $null
+    if ($QuizBundle) {
+        $env:MUSIYO_QUIZ_BUNDLE = (Resolve-Path -LiteralPath $QuizBundle).Path
+        & $pythonPath -m scripts.inspect_session quiz $env:MUSIYO_QUIZ_BUNDLE
+        if ($LASTEXITCODE -ne 0) { throw 'Invalid selected quiz bundle.' }
+    }
     $env:MUSIYO_DATABASE_URL = 'sqlite:///' + $databaseFile.Replace('\', '/')
     $env:MUSIYO_STORAGE_ROOT = $resourceDirectory
     $env:MUSIYO_STORAGE_BACKEND = 'local'
