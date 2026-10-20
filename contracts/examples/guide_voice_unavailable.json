@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "response": {
+    "schema_version": 1,
+    "status": "provider_unavailable",
+    "answer": null,
+    "citations": [],
+    "reason": "provider_unavailable"
+  },
+  "speech_status": "not_applicable",
+  "audio": null
+}

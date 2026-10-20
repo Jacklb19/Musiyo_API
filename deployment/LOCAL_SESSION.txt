@@ -121,3 +121,9 @@ the launcher restores its prior process environment after exit. Omitting it
 starts with no quiz bundle, regardless of an inherited MUSIYO_QUIZ_BUNDLE.
 Changing session settings requires stopping the owned session under its original
 configuration before saving the new selection. Preserve a dated config backup.
+
+OPTIONAL LOCAL VOICE SELECTION
+The external session JSON may include voice_config_path, validated as VoiceSettings
+before any service starts and passed to start-local-api -VoiceConfig. Omitting it
+starts with voice disabled, regardless of an inherited MUSIYO_VOICE_CONFIG. See
+deployment/VOICE.txt for engines, limits, privacy notice and evaluation.

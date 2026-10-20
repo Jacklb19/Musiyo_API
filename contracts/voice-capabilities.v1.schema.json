@@ -1,0 +1,66 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "transcription": {
+      "enum": [
+        "disabled",
+        "configured"
+      ],
+      "title": "Transcription",
+      "type": "string"
+    },
+    "synthesis": {
+      "enum": [
+        "disabled",
+        "configured"
+      ],
+      "title": "Synthesis",
+      "type": "string"
+    },
+    "processing": {
+      "const": "backend_local",
+      "default": "backend_local",
+      "title": "Processing",
+      "type": "string"
+    },
+    "retention": {
+      "const": "request_only",
+      "default": "request_only",
+      "title": "Retention",
+      "type": "string"
+    },
+    "input_mime": {
+      "const": "audio/wav",
+      "default": "audio/wav",
+      "title": "Input Mime",
+      "type": "string"
+    },
+    "max_input_bytes": {
+      "title": "Max Input Bytes",
+      "type": "integer"
+    },
+    "max_input_seconds": {
+      "title": "Max Input Seconds",
+      "type": "integer"
+    },
+    "request_timeout_seconds": {
+      "title": "Request Timeout Seconds",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "transcription",
+    "synthesis",
+    "max_input_bytes",
+    "max_input_seconds",
+    "request_timeout_seconds"
+  ],
+  "title": "VoiceCapabilities",
+  "type": "object"
+}

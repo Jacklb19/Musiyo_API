@@ -1,0 +1,222 @@
+{
+  "$defs": {
+    "GuideCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "element_slug": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Element Slug",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "element_slug",
+        "title"
+      ],
+      "title": "GuideCitation",
+      "type": "object"
+    },
+    "GuideResponse": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "answered"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "answer": {
+                "minLength": 1,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "citations": {
+                "minItems": 1
+              },
+              "reason": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "abstained"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "answer": {
+                "type": "null"
+              },
+              "citations": {
+                "maxItems": 0
+              },
+              "reason": {
+                "const": "insufficient_evidence"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "provider_unavailable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "answer": {
+                "type": "null"
+              },
+              "citations": {
+                "maxItems": 0
+              },
+              "reason": {
+                "const": "provider_unavailable"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "answered",
+            "abstained",
+            "provider_unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "answer": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "pattern": "\\S",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Answer"
+        },
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/GuideCitation"
+          },
+          "maxItems": 8,
+          "title": "Citations",
+          "type": "array"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "insufficient_evidence",
+                "provider_unavailable"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "schema_version",
+        "status",
+        "answer",
+        "citations",
+        "reason"
+      ],
+      "title": "GuideResponse",
+      "type": "object"
+    },
+    "GuideSpeech": {
+      "additionalProperties": false,
+      "properties": {
+        "mime": {
+          "const": "audio/wav",
+          "default": "audio/wav",
+          "title": "Mime",
+          "type": "string"
+        },
+        "data_base64": {
+          "maxLength": 4000000,
+          "minLength": 1,
+          "title": "Data Base64",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_base64"
+      ],
+      "title": "GuideSpeech",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "response": {
+      "$ref": "#/$defs/GuideResponse"
+    },
+    "speech_status": {
+      "enum": [
+        "ready",
+        "disabled",
+        "unavailable",
+        "not_applicable"
+      ],
+      "title": "Speech Status",
+      "type": "string"
+    },
+    "audio": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GuideSpeech"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "response",
+    "speech_status",
+    "audio"
+  ],
+  "title": "GuideVoiceAnswer",
+  "type": "object"
+}

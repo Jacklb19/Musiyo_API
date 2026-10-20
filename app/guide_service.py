@@ -13,7 +13,7 @@ from .guide_config import GuideSettings
 from .guide_contracts import GuideCitation, GuideQuestion, GuideResponse
 from .guide_ollama import REQUEST_DEADLINE
 from .guide_providers import configured_embeddings, configured_generation
-from .guide_repository import GuideRepository
+from .guide_repository import Evidence, GuideRepository
 
 
 class GuideService:
@@ -26,19 +26,23 @@ class GuideService:
         self.generation = generation or configured_generation(self.settings)
 
     def ask(self, question: GuideQuestion) -> GuideResponse:
+        return self.ask_with_evidence(question)[0]
+
+    def ask_with_evidence(self, question: GuideQuestion):
+        evidence: list[Evidence] = []
         local_model = self.settings.embeddings == 'ollama' or self.settings.generation == 'ollama'
         if local_model and not self.model_lock.acquire(blocking=False):
             return GuideResponse(schema_version=1, status='provider_unavailable', answer=None,
-                                 citations=[], reason='provider_unavailable')
+                                 citations=[], reason='provider_unavailable'), evidence
         token = REQUEST_DEADLINE.set(time.monotonic() + self.settings.ollama_timeout_seconds)
         try:
-            return self._ask(question)
+            return self._ask(question, evidence), evidence
         finally:
             REQUEST_DEADLINE.reset(token)
             if local_model:
                 self.model_lock.release()
 
-    def _ask(self, question: GuideQuestion) -> GuideResponse:
+    def _ask(self, question: GuideQuestion, used_evidence: list[Evidence]) -> GuideResponse:
         def unavailable():
             return GuideResponse(schema_version=1, status='provider_unavailable', answer=None, citations=[], reason='provider_unavailable')
 
@@ -70,6 +74,7 @@ class GuideService:
             used = [indexed[key] for key in output.fragment_ids]
             if not repository.revalidate(used):
                 return abstain()
+            used_evidence.extend(used)
             cited = {item.element_slug: item.title for item in used}
             citations = [GuideCitation(element_slug=slug, title=title) for slug, title in cited.items()]
             return GuideResponse(schema_version=1, status='answered',

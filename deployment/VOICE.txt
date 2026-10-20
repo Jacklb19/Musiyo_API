@@ -1,0 +1,66 @@
+GUIDE VOICE — LOCAL ENGINES, LIMITS AND EVIDENCE (2026-10-20)
+
+Scope
+Voice is an optional layer over the textual guide. Text questions, citations,
+abstention and permissions are unchanged; guide v1 is not modified. The backend is
+the only path to an engine. Clients never receive engine names, paths or errors.
+Voice is disabled unless the session selects an external VoiceSettings file.
+
+Endpoints (additive, schema_version 1)
+  GET  /api/v1/guide/voice-capabilities  disabled|configured per direction. This
+       is configuration, not engine readiness, Spanish quality or device support.
+  POST /api/v1/guide/transcriptions?schema_version=1  body audio/wav, PCM16 mono
+       16 kHz, 0.1-30 s, <=5 MB. Returns {schema_version, text}. The client must
+       show the text for review before sending it as a question.
+  POST /api/v1/guide/voice-answers  canonical GuideQuestion. Returns the same
+       GuideResponse as /guide/questions plus speech_status ready|disabled|
+       unavailable|not_applicable and optional base64 WAV. Only an answered,
+       still-authorized response is spoken; a revocation during synthesis removes
+       both text and audio.
+Both POST routes require header X-Musiyo-Voice-Consent: request-only-v1 (the
+client shows the notice first), share the guide rate limit (429 + Retry-After),
+serialize engine use (503 when busy), honour client disconnect (task cancelled)
+and send Cache-Control: private, no-store. Audio and text are kept in memory for
+the request only; nothing is logged, stored or added to the catalogue.
+
+Engines (no downloads, no external services, USD 0)
+  synthesis=windows_sapi   installed Windows voice selected by exact name; the
+                           script refuses non-Spanish voices. Verified here:
+                           "Microsoft Helena Desktop" (es-ES), generic, it does
+                           not clone or represent any person.
+  transcription=windows_sapi  installed Windows es-* desktop recognizer with
+                           free dictation plus a grammar of generic question
+                           frames and currently published catalogue titles
+                           (read per request, so revoked titles never bias).
+  transcription=whisper_cpp   optional loopback whisper.cpp server; requires the
+                           'voice' extra (httpx) and an owner-approved model. Not
+                           installed or evaluated.
+Windows engines run a bundled PowerShell script with data on stdin only. They are
+Windows-only; the Linux container keeps voice disabled.
+
+Example external file (outside repositories):
+  {"transcription":"windows_sapi","synthesis":"windows_sapi",
+   "windows_voice":"Microsoft Helena Desktop","windows_recognizer_culture":"es-ES"}
+
+Evaluation (read-only, external inputs and outputs)
+  python -m scripts.evaluate_voice --database DB --guide-config GUIDE_JSON \
+    --voice-config VOICE_JSON --cases CASES_JSON --output NEW_REPORT
+Synthesizes each question with the selected voice, transcribes it, asks the guide
+and compares status/citations with the typed baseline. Reports identifiers,
+states, word accuracy and timings only. Synthetic generic speech is a technical
+match: human voices, accents, noise, microphones and Quest capture are separate
+checks, and no result is a cultural validation.
+
+Results 2026-10-20 (isolated copy, guide-evaluation-v3, 82 cases)
+  typed 72/82 (same 10 paraphrase abstentions as the accepted 2026-10-15 baseline)
+  spoken, dictation only      42/82, mean word accuracy 0.72
+  spoken, frames + vocabulary 63/82, mean word accuracy 0.92, transcription
+                              median 1.0 s, synthesis median 0.66 s
+  Known limits: Sanjuanes, Kamëntšá and some long mask titles still misrecognized;
+  "Explícame más" was transcribed with "Máscara" and answered — the review step
+  before sending is required, not optional.
+
+Not done / owner decisions
+  Physical microphone tests with people, Quest browser/headset capture, a
+  Colombian-Spanish or higher-quality voice, whisper.cpp model choice, and any
+  paid/remote TTS (ElevenLabs remains for fixed narrations only).

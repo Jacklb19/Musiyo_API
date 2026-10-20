@@ -4,6 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
+from pydantic import BaseModel
+
 from app.contracts import (
     CatalogFacet,
     CatalogPage,
@@ -18,6 +20,7 @@ from app.contracts import (
 from app.guide_contracts import GuideQuestion, GuideResponse
 from app.main import Tour, app
 from app.quiz_contracts import GuideQuiz, GuideQuizAnswer, GuideQuizAnswerResult
+from app.voice_contracts import GuideTranscription, GuideVoiceAnswer, VoiceCapabilities
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = ROOT / "contracts"
@@ -39,6 +42,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true')
     CHECK = parser.parse_args().check
+    voice_models: dict[str, type[BaseModel]] = {'guide-voice-answer': GuideVoiceAnswer, 'guide-transcription': GuideTranscription, 'voice-capabilities': VoiceCapabilities}
+    for name, model in voice_models.items():
+        write_json(CONTRACTS / (name + '.v1.schema.json'), model.model_json_schema())
     write_json(CONTRACTS / 'guide-quiz.v1.schema.json', GuideQuiz.model_json_schema())
     write_json(CONTRACTS / 'guide-quiz-answer.v1.schema.json', GuideQuizAnswer.model_json_schema())
     write_json(CONTRACTS / 'guide-quiz-answer-result.v1.schema.json', GuideQuizAnswerResult.model_json_schema())

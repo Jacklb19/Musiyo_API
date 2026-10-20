@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "response": {
+    "schema_version": 1,
+    "status": "answered",
+    "answer": "Respuesta sintética, sin contenido cultural.",
+    "citations": [
+      {
+        "element_slug": "synthetic-import",
+        "title": "Ficha sintética"
+      }
+    ],
+    "reason": null
+  },
+  "speech_status": "disabled",
+  "audio": null
+}
