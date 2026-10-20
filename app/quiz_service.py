@@ -75,29 +75,42 @@ class QuizService:
         # Read on every request; replacing a reviewed bundle never leaves a stale cache.
         return QuizBundle.model_validate_json(self.bundle_path.read_text(encoding='utf-8'))
 
-    def current(self, db, draft, tour_key, room_key=None):
+    def context(self, db, tour_key, room_key=None):
+        """Per-request publication state, computed once and shared by every question."""
         public = PublicRepository(db, self.now)
         tour = public.tour(tour_key)
         if tour is None:
             return None
         slugs = {element.slug for room in tour.rooms if room_key is None or room.key == room_key
                  for point in room.points for element in point.elements}
+        allowed = set(db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id)))
+        records: dict = {}
+
+        def element(slug):
+            if slug not in records:
+                records[slug] = public.element(slug) if slug in allowed else None
+            return records[slug]
+        return slugs, allowed, element
+
+    def current(self, db, draft, tour_key, room_key=None, context=None):
+        context = context or self.context(db, tour_key, room_key)
+        if context is None:
+            return None
+        slugs, allowed, element = context
         question = draft.question
         # A reviewed museum-wide comprehension question may cite a catalogue record
         # without a spatial anchor. Room-scoped requests remain strictly spatial.
         if draft.state != 'reviewed' or (question.element_slug not in slugs and
                 (room_key is not None or draft.question_style != 'comprehension')):
             return None
-        if question.element_slug not in set(db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id))):
+        if question.element_slug not in allowed:
             return None
-        allowed = set(db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id)))
         if draft.question_style == 'record_recognition':
             for option in question.options:
-                slug = draft.option_elements[option.id]
-                candidate = public.element(slug) if slug in allowed else None
+                candidate = element(draft.option_elements[option.id])
                 if candidate is None or candidate.title != option.text:
                     return None
-        record = public.element(question.element_slug)
+        record = element(question.element_slug)
         if record is None:
             return None
         evidence = next((item for item in record_evidence(record)
@@ -111,7 +124,9 @@ class QuizService:
         questions = []
         if bundle and bundle.tour_key == tour_key:
             with self.factory() as db:
-                questions = [item.question for item in bundle.questions if self.current(db, item, tour_key, room_key)]
+                context = self.context(db, tour_key, room_key)
+                questions = [item.question for item in bundle.questions
+                             if context and self.current(db, item, tour_key, room_key, context)]
         return GuideQuiz(schema_version=1, tour_key=tour_key, room_key=room_key, questions=questions)
 
     def answer(self, answer: GuideQuizAnswer):

@@ -184,3 +184,16 @@ def test_reviewed_comprehension_can_cite_catalogue_without_adding_an_anchor(quiz
     with factory.begin() as db:
         db.execute(CONTENT['authorizations'].update().values(allow_assistant=False))
     assert client.get(query).json()['questions'] == []
+
+
+def test_quiz_list_builds_publication_state_once_per_request(quiz, monkeypatch):
+    # Rebuilding the tour per question made 20 concurrent visitors wait 15-26 s (load rehearsal 20/10).
+    from app import quiz_service
+    client, bundle, path, _ = quiz
+    reviewed(bundle, path)
+    assert len(bundle.questions) > 1
+    calls = []
+    original = quiz_service.PublicRepository.tour
+    monkeypatch.setattr(quiz_service.PublicRepository, 'tour', lambda self, key: calls.append(key) or original(self, key))
+    result = client.get('/api/v1/guide/quiz?tour_key=recorrido-prueba').json()
+    assert len(result['questions']) == len(bundle.questions) and calls == ['recorrido-prueba']
