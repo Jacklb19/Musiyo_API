@@ -63,3 +63,15 @@ retain element restrictions. A rendered image is not a new independent capture.
 The operation adds a new image resource; it never rewrites the source model,
 element metadata, prior grants or guide index. Reverse only that delivery with
 reverse-delivery; never reactivate historical authorizations from a backup.
+
+REVIEWED CREDIT CORRECTIONS
+python -m scripts.update_credits EXTERNAL_PLAN --database EXISTING_DB --dry-run
+python -m scripts.update_credits EXTERNAL_PLAN --database EXISTING_DB --backup-folder LOCAL_BACKUP
+The plan (operation_version 1) needs a filled decision (approved_by, approved_on,
+reference) and, per element, the credits it currently shows plus the reviewed
+replacement; per resource, the expected and new credit text. Any mismatch refuses.
+Applying requires a scripts.local_backup folder whose manifest matches the current
+database state, runs in one transaction and rolls back if authorizations,
+restrictions, sources, blocks, elements, details, other credits or other resource
+fields change. Credits are display metadata: grants, publication and the guide
+index are untouched. Rehearsed on a copy 2026-10-20 (four masks, 15 changes).
