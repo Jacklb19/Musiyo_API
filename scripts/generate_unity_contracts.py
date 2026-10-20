@@ -19,7 +19,9 @@ def generate() -> str:
     roots["GuideQuestion"] = json.loads((CONTRACTS / "guide-question.v1.schema.json").read_text(encoding="utf-8"))
     roots["GuideResponse"] = json.loads((CONTRACTS / "guide-response.v1.schema.json").read_text(encoding="utf-8"))
     for name, filename in [('GuideQuiz', 'guide-quiz'), ('GuideQuizAnswer', 'guide-quiz-answer'),
-                           ('GuideQuizAnswerResult', 'guide-quiz-answer-result')]:
+                           ('GuideQuizAnswerResult', 'guide-quiz-answer-result'),
+                           ('VoiceCapabilities', 'voice-capabilities'), ('GuideTranscription', 'guide-transcription'),
+                           ('GuideVoiceAnswer', 'guide-voice-answer')]:
         roots[name] = json.loads((CONTRACTS / f'{filename}.v1.schema.json').read_text(encoding='utf-8'))
     models = {}
     for schema in roots.values():
