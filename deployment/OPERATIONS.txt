@@ -48,6 +48,22 @@ and MUSIYO_PRIVATE_VOLUME_NAME to the returned volume, then run start and health
 volume archive: preserve object versions plus the external manifests/originals
 with a separately authorized offline export before Free-account closure.
 
+Local SQLite museum backup and restore
+--------------------------------------
+The local museum (SQLite database plus matching private storage) has its own
+verifiable procedure. Both folders must be new and outside the repositories:
+python -m scripts.local_backup backup --database <museum.db> --storage <private> --backup-folder <new-external-folder>
+python -m scripts.local_backup restore --snapshot <backup-folder> --destination <new-external-folder>
+Backup opens the source read-only through SQLite's online backup API (safe while
+the API runs), copies the storage and writes backup-manifest.json with hashes,
+schema revision, integrity check and table row counts, including revoked
+authorizations. Restore verifies every hash before copying, refuses existing
+destinations and re-checks integrity, revision, row counts and revocations in
+restore-report.json. A restored copy is never selected automatically: inspect it,
+then point a new session file at it. Rehearsed on 2026-10-20 with the live
+preview: source hash unchanged, all checks passed, an API on the restored copy
+returned 23/23 responses identical to the reference and a matching resource hash.
+
 AWS resource proposal and deployment prerequisites
 -------------------------------------------------
 Read aws-proposal.json and both CloudFormation resource lists (the Web template
