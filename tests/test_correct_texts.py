@@ -59,3 +59,17 @@ def test_stale_or_ambiguous_fragments_are_refused(guide):
     assert record(guide) == before
     with pytest.raises(ValidationError):
         plan(dict(slug="synthetic-import", field="block", expected="produce sonido", replacement="x"))
+    with pytest.raises(ValidationError):
+        plan(dict(slug="synthetic-import", field="block_context", expected="contexto", replacement="x"))
+
+
+def test_block_context_and_attribution_are_corrected_in_place(guide):
+    database = Path(guide[0].removeprefix("sqlite:///"))
+    import sqlite3
+    with sqlite3.connect(database) as db:
+        db.execute("UPDATE detail_blocks SET context='Nota interna de las secciones 7.3', attribution='Autora citada (2020)' WHERE element_id='synthetic-import'")
+    apply(database, plan(dict(slug="synthetic-import", field="block_context", block_order=0, expected="Nota interna de las secciones 7.3", replacement="Nota para visitantes"),
+                         dict(slug="synthetic-import", field="block_attribution", block_order=0, expected=" (2020)", replacement="")), dry_run=False)
+    block = record(guide)["blocks"][0]
+    assert block["context"] == "Nota para visitantes" and block["attribution"] == "Autora citada"
+    assert block["text"] == "El instrumento sintético produce sonido durante la prueba."

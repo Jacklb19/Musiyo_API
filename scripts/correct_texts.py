@@ -1,7 +1,7 @@
 """Reviewed wording corrections in published records (compare-and-set substring replacement).
 
-Each change names one element and either its description or one detail block (by order), the
-exact current fragment and its replacement; the fragment must occur exactly once. The description
+Each change names one element and either its description or one detail block (by order: its text,
+context or attribution), the exact current fragment and its replacement; the fragment must occur exactly once. The description
 is changed in element_details and, where it holds the same fragment, in elements. --dry-run prints
 the difference. Applying requires a matching scripts.local_backup folder and one transaction in
 which every other row and column stays identical; the guide index of touched records is rebuilt
@@ -31,20 +31,22 @@ from scripts.update_credits import Decision, DryRun, matching_backup
 
 # Derived tables are rebuilt by triggers (element_search) or by reindex (index_fragments).
 DERIVED = ("index_fragments", "element_search", "tours", "alembic_version")
-TEXT_TABLES = {"element_details": "description", "elements": "description", "detail_blocks": "text"}
+TEXT_TABLES = {"element_details": ("description",), "elements": ("description",),
+               "detail_blocks": ("text", "context", "attribution")}
+BLOCK_COLUMNS = {"block": "text", "block_context": "context", "block_attribution": "attribution"}
 
 
 class TextChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     slug: str = Field(min_length=1, max_length=200)
-    field: str = Field(pattern=r"^(description|block)$")
+    field: str = Field(pattern=r"^(description|block|block_context|block_attribution)$")
     block_order: int | None = Field(default=None, ge=0)
     expected: str = Field(min_length=3, max_length=2000)
     replacement: str = Field(max_length=2000)
 
     @model_validator(mode="after")
     def shape(self):
-        if (self.field == "block") != (self.block_order is not None):
+        if (self.field in BLOCK_COLUMNS) != (self.block_order is not None):
             raise ValueError("A block change needs block_order; a description change must not have one")
         if self.expected == self.replacement:
             raise ValueError("Nothing to change")
@@ -86,18 +88,17 @@ def apply(database: Path, plan: TextPlan, *, dry_run: bool, now=utc_now) -> dict
             for change in plan.changes:
                 targets = []
                 if change.field == "description":
-                    targets.append(("element_details", (change.slug,)))
+                    targets.append(("element_details", (change.slug,), "description"))
                     element = expected["elements"].get((change.slug,))
                     if element and element["description"] and change.expected in element["description"]:
-                        targets.append(("elements", (change.slug,)))
+                        targets.append(("elements", (change.slug,), "description"))
                 else:
                     block = [key for key, row in expected["detail_blocks"].items()
                              if row["element_id"] == change.slug and row["order"] == change.block_order]
-                    targets.extend(("detail_blocks", key) for key in block)
+                    targets.extend(("detail_blocks", key, BLOCK_COLUMNS[change.field]) for key in block)
                 if not targets or targets[0][1] not in expected[targets[0][0]]:
                     raise ValueError(f"{change.slug}: no {change.field} to correct")
-                for table, key in targets:
-                    column = TEXT_TABLES[table]
+                for table, key, column in targets:
                     old = expected[table][key][column]
                     expected[table][key][column] = replaced(old, change, f"{change.slug} {change.field}")
                     changes.append(dict(target=change.slug, table=table, field=change.field, block_order=change.block_order,
@@ -105,12 +106,12 @@ def apply(database: Path, plan: TextPlan, *, dry_run: bool, now=utc_now) -> dict
             touched = sorted({change.slug for change in plan.changes})
             if dry_run:
                 raise DryRun()
-            for table, column in TEXT_TABLES.items():
+            for table, columns in TEXT_TABLES.items():
                 for key, row in expected[table].items():
-                    if row[column] != before[table][key][column]:
+                    values = {column: row[column] for column in columns if row[column] != before[table][key][column]}
+                    if values:
                         primary = CONTENT[table].primary_key.columns
-                        db.execute(CONTENT[table].update().where(*[c == v for c, v in zip(primary, key)])
-                                   .values({column: row[column]}))
+                        db.execute(CONTENT[table].update().where(*[c == v for c, v in zip(primary, key)]).values(values))
             for slug in touched:
                 reindex_in_session(db, slug)
             stamp = now()
@@ -123,10 +124,10 @@ def apply(database: Path, plan: TextPlan, *, dry_run: bool, now=utc_now) -> dict
                 revisions[key] = stamp.isoformat()
             db.flush()
             after = rows(db)
-            for table, column in TEXT_TABLES.items():
+            for table, columns in TEXT_TABLES.items():
                 for key, row in expected[table].items():
                     # The corrected rows get a fresh updated_at from the table's onupdate default.
-                    if row[column] != before[table][key][column] and "updated_at" in row:
+                    if any(row[column] != before[table][key][column] for column in columns) and "updated_at" in row:
                         row["updated_at"] = after[table][key]["updated_at"]
             if after != expected:
                 raise ValueError("Content outside the planned wording changed; transaction rolled back")
