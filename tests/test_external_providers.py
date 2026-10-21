@@ -222,3 +222,43 @@ def test_provider_requests_identify_the_museum_agent(monkeypatch):
     with pytest.raises(ProviderUnavailable):
         remote_http.post("https://api.groq.com/openai/v1/chat/completions", b"{}", {}, 1, 10)
     assert seen == {"agent": "Musiyo-API/1.0", "method": "POST"}
+
+
+def hedged_evidence():
+    from types import SimpleNamespace
+    return [SimpleNamespace(fragment_id="f1", title="Relato sintético", kind="summary", community=None, attribution=None,
+                            context=None, source_reference="Fuente sintética",
+                            text="Una de las versiones habla de una figura sintética cuyo regreso trajo cantos de prueba.")]
+
+
+def test_lost_qualification_detection():
+    from app.guide_hedges import lost_qualifications
+    used = hedged_evidence()
+    assert lost_qualifications("¿Qué es el relato?", "La figura sintética trajo cantos de prueba al regresar.", used)
+    assert not lost_qualifications("¿Qué es el relato?", "Según una de las versiones, la figura sintética trajo cantos.", used)
+    assert not lost_qualifications("¿Qué es el relato?", "Es un relato sintético.", used)
+
+
+@pytest.mark.parametrize("repaired", [True, False])
+def test_dropped_qualifier_gets_one_repair_then_falls_back(key, repaired):
+    answers = ["La figura sintética trajo cantos de prueba al regresar.",
+               "Según una de las versiones, la figura sintética trajo cantos de prueba." if repaired
+               else "La figura sintética regresó y trajo cantos de prueba."]
+    calls = []
+
+    def fake_post(url, payload, headers, timeout, limit):
+        calls.append(payload["messages"])
+        content = json.dumps({"answer": answers[len(calls) - 1], "fragment_ids": ["E1"], "sufficient": True})
+        return {"choices": [{"message": {"content": content}}]}
+
+    generation = GroqGeneration(groq_settings(key), post=fake_post)
+    if repaired:
+        result = generation.generate("¿Qué es el relato?", hedged_evidence())
+        assert result.answer.startswith("Según una de las versiones") and len(calls) == 2
+        assert "Una de las versiones habla" in calls[1][-1]["content"]
+    else:
+        with pytest.raises(ProviderUnavailable):
+            generation.generate("¿Qué es el relato?", hedged_evidence())
+        fallback = FallbackGeneration(GroqGeneration(groq_settings(key), post=fake_post), LocalExtractiveGeneration())
+        calls.clear()
+        assert "Una de las versiones" in fallback.generate("¿Qué es el relato?", hedged_evidence()).answer
