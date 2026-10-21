@@ -67,7 +67,8 @@ try {
 $vite = Join-Path $webRoot 'node_modules/vite/bin/vite.js'
 if (-not (Test-Path -LiteralPath $python) -or -not (Test-Path -LiteralPath $vite)) { throw 'Install the existing repository dependencies first.' }
 $guideSettings = Get-Content -LiteralPath $guide -Raw | ConvertFrom-Json
-if ($guideSettings.generation -ne 'local') { throw 'This session requires the accepted extractive generation adapter.' }
+# Accepted: local extractive, or Groq with the extractive fallback (owner decision 2026-10-20).
+if ($guideSettings.generation -notin @('local', 'groq')) { throw 'This session requires the extractive guide or the accepted Groq adapter.' }
 $statePath = Join-Path $stateDirectory 'session-state.json'
 # Bind state to the selected configuration, without storing secrets or question text.
 $hasher = [Security.Cryptography.SHA256]::Create()
