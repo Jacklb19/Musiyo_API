@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 class GuideSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
-    generation: Literal["local", "disabled", "ollama"] = "local"
+    generation: Literal["local", "disabled", "ollama", "groq"] = "local"
     embeddings: Literal["local", "ollama"] = "local"
     candidate_limit: int = Field(default=8, ge=1, le=32)
     evidence_limit: int = Field(default=4, ge=1, le=8)
@@ -26,6 +26,13 @@ class GuideSettings(BaseModel):
     ollama_timeout_seconds: float = Field(default=10, ge=1, le=40)
     ollama_context_tokens: int = Field(default=4096, ge=2048, le=8192)
     ollama_output_tokens: int = Field(default=384, ge=128, le=768)
+    # External generation (owner decision 2026-10-20): questions and retrieved fragments go to Groq.
+    groq_model: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9._/-]{2,99}$")
+    groq_api_key_file: str | None = Field(default=None, min_length=1, max_length=500)
+    groq_timeout_seconds: float = Field(default=8, ge=1, le=20)
+    groq_output_tokens: int = Field(default=600, ge=128, le=2000)
+    # When the external provider fails, answer with the accepted local extractive guide.
+    generation_fallback: Literal["local", "none"] = "local"
 
     @field_validator("ollama_url")
     @classmethod
@@ -51,6 +58,8 @@ class GuideSettings(BaseModel):
             raise ValueError("Pin the installed embedding model digest before indexing")
         if self.generation == "ollama" and self.ollama_generation_digest is None:
             raise ValueError("Pin the installed generation model digest")
+        if self.generation == "groq" and not (self.groq_model and self.groq_api_key_file):
+            raise ValueError("Select the Groq model and the external key file explicitly")
         return self
 
     @classmethod

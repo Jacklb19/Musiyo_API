@@ -1,0 +1,64 @@
+GUIDE AI AND VOICE PROVIDERS (owner decision 2026-10-20)
+
+Decision
+- Answer writing: Groq chat model over the retrieved, currently authorized ficha fragments,
+  with the accepted local extractive guide as fallback when Groq is unavailable. The owner
+  accepted that questions and the retrieved fragments are sent to Groq.
+- Understanding speech: Groq Whisper (whisper-large-v3-turbo), optional local Windows fallback.
+- Speaking answers: ElevenLabs API, with local Piper as free fallback (Windows SAPI only when
+  the API runs on a Windows PC).
+- Ambiguous generic questions ("¿Qué es la máscara?") get a rule-based clarification listing
+  the current matching titles; no provider is called for them.
+Clients (Web, Unity WebGL/Windows/Quest) never see provider names in requests, keys or URLs:
+they only call the museum API. The same contracts work whichever engines the server selects.
+
+Keys
+Create each key in the provider console (owner account) and save it in a small text file
+OUTSIDE every repository, readable only by the API account. Never put keys in VITE_ variables,
+Unity, fixtures, logs or chat. Files are read on each call, so rotating a key needs no restart.
+
+Guide configuration (external JSON selected by guide_config in the session file):
+  {"generation":"groq","embeddings":"local","groq_model":"openai/gpt-oss-120b",
+   "groq_api_key_file":"C:/musiyo-secrets/groq.key","generation_fallback":"local"}
+groq_model must be a model the Groq console lists for the account; strict JSON-schema output
+is used (supported per Groq docs on 2026-10-20 by openai/gpt-oss-120b, openai/gpt-oss-20b and
+others). Timeout 8 s by default (groq_timeout_seconds 1-20).
+
+Voice configuration (external JSON selected by voice_config_path):
+  {"transcription":"groq","transcription_fallback":["windows_sapi"],
+   "synthesis":"elevenlabs","synthesis_fallback":["piper","windows_sapi"],
+   "groq_api_key_file":"C:/musiyo-secrets/groq.key",
+   "elevenlabs_api_key_file":"C:/musiyo-secrets/elevenlabs.key",
+   "elevenlabs_voice_id":"<voice id from the ElevenLabs voice library>",
+   "elevenlabs_model_id":"eleven_multilingual_v2",
+   "piper_executable":"C:/musiyo-voice/piper/piper.exe",
+   "piper_model":"C:/musiyo-voice/voices/<voz>.onnx",
+   "windows_voice":"Microsoft Helena Desktop","windows_recognizer_culture":"es-ES"}
+On a Linux server drop windows_sapi from both chains. Each engine gets engine_timeout_seconds
+within request_timeout_seconds. voice-capabilities then reports processing
+"external_providers" and providers ["ElevenLabs","Groq"]; clients must show those names in the
+notice before the visitor accepts.
+
+Privacy
+The museum stores no question, recording, transcription or answer and adds none to the
+catalogue. Providers apply their own terms (groq.com, elevenlabs.io); check their data-use and
+retention terms before public use. The Web guide hint and privacy page name both providers.
+
+Quotas and cost (USD 0 own spend)
+Free tiers are limited and change; check the consoles. As read on 2026-10-20 from secondary
+sources: Groq free roughly 1,000 chat requests/day and 2,000 Whisper requests/day; ElevenLabs
+free about 10,000 credits/month (~10 minutes of speech, roughly 20-30 guide answers), with
+attribution required and no commercial rights. When a quota is exhausted the chains fall back:
+the extractive guide answers in text, Piper/SAPI speak. A pilot with 10-15 people can exhaust
+ElevenLabs free credits; do not upgrade without an explicit owner decision.
+
+Piper
+Install the Piper executable and one Spanish voice (.onnx plus .onnx.json) outside the
+repositories after owner approval of the exact download. The adapter runs
+"piper --model <voz.onnx> --output_raw", sends one line of text on stdin and reads raw PCM at
+the voice's sample_rate (16 000, 22 050 or 24 000 Hz).
+
+Evaluation
+python -m scripts.evaluate_guide ... --allow-generative-evaluation  (works with groq too)
+python -m scripts.evaluate_voice ...  (synthetic speech; set the voice file to the chosen chain)
+Contract tests with simulated HTTP do not prove provider quality, quotas or availability.

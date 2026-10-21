@@ -78,7 +78,7 @@ def evaluate(database: Path, settings: GuideSettings, cases: list[EvaluationCase
              repeats: int = 1, review: list | None = None, allow_generation: bool = False) -> dict:
     if not 1 <= repeats <= 5:
         raise ValueError("Select between one and five sequential observations per case")
-    if settings.generation != "local" and not (allow_generation and settings.generation == "ollama"):
+    if settings.generation != "local" and not (allow_generation and settings.generation in {"ollama", "groq"}):
         raise ValueError("Generative evaluation requires an explicit flag and pinned local configuration")
     # SQLite URI mode=ro prevents creation, import, migration or index writes.
     factory = make_session_factory("sqlite:///" + database.as_uri() + "?mode=ro&uri=true")
@@ -124,7 +124,7 @@ def evaluate(database: Path, settings: GuideSettings, cases: list[EvaluationCase
                     latency=dict(first_observed=latency_summary([item["seconds"] for item in results if item["observation"] == 1]),
                                  repeated=latency_summary([item["seconds"] for item in results if item["observation"] > 1]),
                                  note="First observed is not proof of a cold model; record provider residency separately."),
-                    generation_model=settings.ollama_generation_model if settings.generation == "ollama" else "extractive",
+                    generation_model={"ollama": settings.ollama_generation_model, "groq": settings.groq_model}.get(settings.generation, "extractive"),
                     categories={category: dict(observations=sum(item["category"] == category for item in results),
                                                matched=sum(item["category"] == category and item["expectations_match"] for item in results))
                                 for category in sorted({case.category for case in cases})},

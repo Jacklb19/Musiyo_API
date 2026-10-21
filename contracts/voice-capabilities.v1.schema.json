@@ -24,10 +24,25 @@
       "type": "string"
     },
     "processing": {
-      "const": "backend_local",
       "default": "backend_local",
+      "enum": [
+        "backend_local",
+        "external_providers"
+      ],
       "title": "Processing",
       "type": "string"
+    },
+    "providers": {
+      "items": {
+        "enum": [
+          "Groq",
+          "ElevenLabs"
+        ],
+        "type": "string"
+      },
+      "maxItems": 2,
+      "title": "Providers",
+      "type": "array"
     },
     "retention": {
       "const": "request_only",

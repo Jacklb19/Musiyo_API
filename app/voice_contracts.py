@@ -11,7 +11,9 @@ class VoiceCapabilities(ContractModel):
     schema_version: Literal[1] = 1
     transcription: Literal["disabled", "configured"]
     synthesis: Literal["disabled", "configured"]
-    processing: Literal["backend_local"] = "backend_local"
+    # external_providers: audio or text also goes to the named providers (shown before consent).
+    processing: Literal["backend_local", "external_providers"] = "backend_local"
+    providers: list[Literal["Groq", "ElevenLabs"]] = Field(default_factory=list, max_length=2)
     retention: Literal["request_only"] = "request_only"
     input_mime: Literal["audio/wav"] = "audio/wav"
     max_input_bytes: int

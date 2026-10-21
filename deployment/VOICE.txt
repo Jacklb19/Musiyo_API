@@ -1,4 +1,6 @@
-GUIDE VOICE — LOCAL ENGINES, LIMITS AND EVIDENCE (2026-10-20)
+GUIDE VOICE — ENGINES, LIMITS AND EVIDENCE (2026-10-20)
+Update: the owner selected Groq Whisper + ElevenLabs with Piper/Windows fallbacks; see
+deployment/GUIDE_PROVIDERS.txt. The Windows engines below remain the local fallback.
 
 Scope
 Voice is an optional layer over the textual guide. Text questions, citations,

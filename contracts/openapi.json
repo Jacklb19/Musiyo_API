@@ -3982,9 +3982,24 @@
           },
           "processing": {
             "type": "string",
-            "const": "backend_local",
+            "enum": [
+              "backend_local",
+              "external_providers"
+            ],
             "title": "Processing",
             "default": "backend_local"
+          },
+          "providers": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "Groq",
+                "ElevenLabs"
+              ]
+            },
+            "type": "array",
+            "maxItems": 2,
+            "title": "Providers"
           },
           "retention": {
             "type": "string",

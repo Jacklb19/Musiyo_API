@@ -9,6 +9,7 @@ from .guide_adapters import (
     Generation,
     ProviderUnavailable,
 )
+from .guide_clarification import ambiguous_records, clarification_text, current_titles
 from .guide_config import GuideSettings
 from .guide_contracts import GuideCitation, GuideQuestion, GuideResponse
 from .guide_ollama import REQUEST_DEADLINE
@@ -53,6 +54,14 @@ class GuideService:
             return unavailable()
         with self.factory() as db:
             repository = GuideRepository(db, self.now)
+            if question.element_slug is None:
+                titles = current_titles(db)
+                options = ambiguous_records(question.question, titles)
+                if options:
+                    # Rule-based, no provider: list the current matching records and ask which one.
+                    return GuideResponse(schema_version=1, status='answered', answer=clarification_text(options, titles),
+                                         citations=[GuideCitation(element_slug=slug, title=titles[slug]) for slug in options],
+                                         reason=None)
             try:
                 evidence = repository.retrieve(question.question, question.element_slug, self.embeddings, self.settings)
                 if not evidence:

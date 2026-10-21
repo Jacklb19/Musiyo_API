@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "transcription": "configured",
+  "synthesis": "configured",
+  "processing": "external_providers",
+  "retention": "request_only",
+  "input_mime": "audio/wav",
+  "max_input_bytes": 5000000,
+  "max_input_seconds": 30,
+  "request_timeout_seconds": 45,
+  "providers": [
+    "ElevenLabs",
+    "Groq"
+  ]
+}

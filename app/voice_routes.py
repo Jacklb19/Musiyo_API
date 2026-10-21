@@ -15,7 +15,12 @@ from .public_repository import PublicRepository
 from .voice_adapters import (
     MAX_OUTPUT_BYTES,
     MAX_OUTPUT_SECONDS,
+    ChainSynthesizer,
+    ChainTranscriber,
     DisabledVoice,
+    ElevenLabsSynthesizer,
+    GroqTranscriber,
+    PiperSynthesizer,
     Synthesizer,
     Transcriber,
     WhisperCppTranscriber,
@@ -62,11 +67,21 @@ class VoiceService:
         self.settings = settings or VoiceSettings.from_environment()
         transcribers: dict[str, Callable[[], Transcriber]] = {
             "whisper_cpp": lambda: WhisperCppTranscriber(self.settings),
-            "windows_sapi": lambda: WindowsSapiTranscriber(self.settings, self.vocabulary)}
-        selected = transcribers.get(self.settings.transcription)
-        self.transcriber = transcriber or (selected() if selected else DisabledVoice())
-        self.synthesizer = synthesizer or (WindowsSapiSynthesizer(self.settings)
-                            if self.settings.synthesis == "windows_sapi" else DisabledVoice())
+            "windows_sapi": lambda: WindowsSapiTranscriber(self.settings, self.vocabulary),
+            "groq": lambda: GroqTranscriber(self.settings)}
+        synthesizers: dict[str, Callable[[], Synthesizer]] = {
+            "windows_sapi": lambda: WindowsSapiSynthesizer(self.settings),
+            "elevenlabs": lambda: ElevenLabsSynthesizer(self.settings),
+            "piper": lambda: PiperSynthesizer(self.settings)}
+        heard = [transcribers[name]() for name in self.settings.transcription_chain]
+        spoken = [synthesizers[name]() for name in self.settings.synthesis_chain]
+        self.transcriber = transcriber or (ChainTranscriber(heard) if heard else DisabledVoice())
+        self.synthesizer = synthesizer or (ChainSynthesizer(spoken) if spoken else DisabledVoice())
+        # Each engine in a fallback chain gets its own time, within the request budget.
+        self.transcription_budget = min(self.settings.engine_timeout_seconds * max(1, len(heard)),
+                                        self.settings.request_timeout_seconds - 5)
+        self.synthesis_budget = min(self.settings.engine_timeout_seconds * max(1, len(spoken)),
+                                    self.settings.request_timeout_seconds - 5)
         self.busy = False
 
     async def vocabulary(self) -> list[str]:
@@ -82,7 +97,7 @@ class VoiceService:
             if self.settings.synthesis != "disabled":
                 try:
                     data = await asyncio.wait_for(self.synthesizer.synthesize(response.answer or ""),
-                                                  self.settings.engine_timeout_seconds)
+                                                  self.synthesis_budget)
                     validate_wave(data, MAX_OUTPUT_SECONDS, MAX_OUTPUT_BYTES, input_audio=False)
                     audio = GuideSpeech(data_base64=base64.b64encode(data).decode("ascii"))
                     speech_status = "ready"
@@ -122,8 +137,11 @@ def install_voice_routes(app, service: VoiceService):
     @app.get("/api/v1/guide/voice-capabilities", response_model=VoiceCapabilities)
     def capabilities():
         # Configuration is not engine readiness, Spanish quality or device support.
+        providers = settings.external_providers
         return VoiceCapabilities(transcription="disabled" if settings.transcription == "disabled" else "configured",
                                  synthesis="disabled" if settings.synthesis == "disabled" else "configured",
+                                 processing="external_providers" if providers else "backend_local",
+                                 providers=providers,
                                  max_input_bytes=settings.max_input_bytes, max_input_seconds=settings.max_input_seconds,
                                  request_timeout_seconds=settings.request_timeout_seconds)
 
@@ -148,7 +166,7 @@ def install_voice_routes(app, service: VoiceService):
                 raise HTTPException(503, "La transcripción no está habilitada. Escribe tu pregunta")
             async def recognize():
                 return await asyncio.wait_for(service.transcriber.transcribe(bytes(data)),
-                                              settings.engine_timeout_seconds)
+                                              service.transcription_budget)
             try:
                 text = await connected(request, recognize(), settings.request_timeout_seconds)
                 return GuideTranscription(text=text)
