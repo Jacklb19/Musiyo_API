@@ -17,7 +17,14 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.content_operations import reindex_in_session
 from app.content_tables import CONTENT
-from app.db import PointElementRecord, PointRecord, RoomRecord, TourRecord, make_session_factory, utc_now
+from app.db import (
+    PointElementRecord,
+    PointRecord,
+    RoomRecord,
+    TourRecord,
+    make_session_factory,
+    utc_now,
+)
 from scripts.evaluate_guide import external_file
 from scripts.local_backup import MANIFEST
 from scripts.update_credits import Decision, DryRun, matching_backup
