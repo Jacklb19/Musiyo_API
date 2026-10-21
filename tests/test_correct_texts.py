@@ -73,3 +73,15 @@ def test_block_context_and_attribution_are_corrected_in_place(guide):
     block = record(guide)["blocks"][0]
     assert block["context"] == "Nota para visitantes" and block["attribution"] == "Autora citada"
     assert block["text"] == "El instrumento sintético produce sonido durante la prueba."
+
+
+def test_source_reference_is_corrected_only_through_an_element_that_cites_it(guide):
+    database = Path(guide[0].removeprefix("sqlite:///"))
+    change = dict(slug="synthetic-import", field="source_reference", source_id="test-source",
+                  expected="Referencia sintética de prueba", replacement="Referencia corregida")
+    apply(database, plan(change), dry_run=False)
+    assert record(guide)["sources"][0]["reference"] == "Referencia corregida"
+    with pytest.raises(ValueError):
+        apply(database, plan(change | dict(source_id="otra-fuente", expected="Referencia corregida", replacement="x y z")), dry_run=False)
+    with pytest.raises(ValidationError):
+        plan(dict(slug="synthetic-import", field="source_reference", expected="Referencia", replacement="x"))

@@ -32,15 +32,16 @@ from scripts.update_credits import Decision, DryRun, matching_backup
 # Derived tables are rebuilt by triggers (element_search) or by reindex (index_fragments).
 DERIVED = ("index_fragments", "element_search", "tours", "alembic_version")
 TEXT_TABLES = {"element_details": ("description",), "elements": ("description",),
-               "detail_blocks": ("text", "context", "attribution")}
+               "detail_blocks": ("text", "context", "attribution"), "sources": ("reference",)}
 BLOCK_COLUMNS = {"block": "text", "block_context": "context", "block_attribution": "attribution"}
 
 
 class TextChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     slug: str = Field(min_length=1, max_length=200)
-    field: str = Field(pattern=r"^(description|block|block_context|block_attribution)$")
+    field: str = Field(pattern=r"^(description|block|block_context|block_attribution|source_reference)$")
     block_order: int | None = Field(default=None, ge=0)
+    source_id: str | None = Field(default=None, min_length=1, max_length=100)
     expected: str = Field(min_length=3, max_length=2000)
     replacement: str = Field(max_length=2000)
 
@@ -48,6 +49,8 @@ class TextChange(BaseModel):
     def shape(self):
         if (self.field in BLOCK_COLUMNS) != (self.block_order is not None):
             raise ValueError("A block change needs block_order; a description change must not have one")
+        if (self.field == "source_reference") != (self.source_id is not None):
+            raise ValueError("A source change needs source_id (of a source the named element cites)")
         if self.expected == self.replacement:
             raise ValueError("Nothing to change")
         return self
@@ -92,6 +95,10 @@ def apply(database: Path, plan: TextPlan, *, dry_run: bool, now=utc_now) -> dict
                     element = expected["elements"].get((change.slug,))
                     if element and element["description"] and change.expected in element["description"]:
                         targets.append(("elements", (change.slug,), "description"))
+                elif change.field == "source_reference":
+                    if (change.slug, change.source_id) not in expected["element_sources"]:
+                        raise ValueError(f"{change.slug}: does not cite {change.source_id}")
+                    targets.append(("sources", (str(change.source_id),), "reference"))
                 else:
                     block = [key for key, row in expected["detail_blocks"].items()
                              if row["element_id"] == change.slug and row["order"] == change.block_order]
@@ -103,7 +110,9 @@ def apply(database: Path, plan: TextPlan, *, dry_run: bool, now=utc_now) -> dict
                     expected[table][key][column] = replaced(old, change, f"{change.slug} {change.field}")
                     changes.append(dict(target=change.slug, table=table, field=change.field, block_order=change.block_order,
                                         before=change.expected, after=change.replacement))
-            touched = sorted({change.slug for change in plan.changes})
+            cited = {change.source_id for change in plan.changes if change.source_id}
+            touched = sorted({change.slug for change in plan.changes}
+                             | {element for element, source in expected["element_sources"] if source in cited})
             if dry_run:
                 raise DryRun()
             for table, columns in TEXT_TABLES.items():
