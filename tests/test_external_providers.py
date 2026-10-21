@@ -271,3 +271,11 @@ def test_a_question_naming_one_record_is_scoped_to_its_most_specific_title():
     assert named_record("¿Quiénes son los matachines?", titles) == "matachin"
     assert named_record("¿Qué diferencia hay entre el bombo y la flauta?", titles) is None
     assert named_record("¿Qué instrumento suena?", titles) is None
+
+
+def test_piper_speed_is_passed_as_length_scale():
+    settings = VoiceSettings(synthesis="piper", piper_executable="piper.exe", piper_model="voz.onnx", piper_length_scale=1.15)
+    command = PiperSynthesizer(settings).command(Path("piper.exe"), Path("voz.onnx"))
+    assert command[-2:] == ["--length_scale", "1.15"]
+    with pytest.raises(ValidationError):
+        VoiceSettings(synthesis="piper", piper_executable="p", piper_model="m", piper_length_scale=2.5)

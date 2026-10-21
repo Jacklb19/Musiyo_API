@@ -238,7 +238,8 @@ class PiperSynthesizer:
         return executable, model, rate
 
     def command(self, executable: Path, model: Path) -> list[str]:
-        return [str(executable), "--model", str(model), "--output_raw"]
+        return [str(executable), "--model", str(model), "--output_raw",
+                "--length_scale", f"{self.settings.piper_length_scale:.2f}"]
 
     async def synthesize(self, text: str) -> bytes:
         if not 1 <= len(text) <= 2000:

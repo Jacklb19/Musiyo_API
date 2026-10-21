@@ -34,6 +34,8 @@ class VoiceSettings(BaseModel):
     elevenlabs_model_id: str = Field(default="eleven_multilingual_v2", pattern=r"^[a-z0-9_]{3,60}$")
     piper_executable: str | None = Field(default=None, min_length=1, max_length=500)
     piper_model: str | None = Field(default=None, min_length=1, max_length=500)
+    # >1 speaks slower (Piper length_scale); the owner found the chosen voice too fast at 1.0.
+    piper_length_scale: float = Field(default=1.0, ge=0.7, le=1.6)
     max_input_bytes: int = Field(default=5000000, ge=1000, le=5000000)
     max_input_seconds: int = Field(default=30, ge=1, le=30)
     engine_timeout_seconds: int = Field(default=15, ge=1, le=20)
