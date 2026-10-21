@@ -66,3 +66,9 @@ Not done / owner decisions
   Physical microphone tests with people, Quest browser/headset capture, a
   Colombian-Spanish or higher-quality voice, whisper.cpp model choice, and any
   paid/remote TTS (ElevenLabs remains for fixed narrations only).
+
+Attribution (required, 21/10/2026): the Piper fallback voice es_AR-daniela-high was trained by
+larcanio (huggingface.co/larcanio/piper-voices) on OpenSLR SLR61, Crowdsourced Argentinian Spanish
+speech (Guevara-Rukoz et al., 2020), licensed CC BY-SA 4.0. The Web privacy page ("Voces
+sintéticas") states it; every client that plays guide audio must show the same attribution in its
+credits. Owner-selected speed: piper_length_scale 1.30.
