@@ -71,7 +71,7 @@ Verified with the owner's real keys on 2026-10-20 (local preview, real catalogue
   1.3 s; worksheet for human review outside the repositories. Whisper: ~1 s per question.
 - ElevenLabs FREE plan refuses library voices through the API (402 paid_plan_required, e.g.
   "Diego", used for the fixed narrations). Premade voices work with eleven_multilingual_v2
-  (Spanish speech with a non-native timbre). The key cannot read /user/subscription (401),
+  (Spanish speech; the owner judges accent and quality). The key cannot read /user/subscription (401),
   so remaining credits are visible only in the ElevenLabs console.
 - Piper 2023.11.14-2 (Windows) with es_MX-claude-high (Apache-2.0, 22 050 Hz) installed in
   C:/musiyo-voice; ~1.6 s for a 6 s sentence warm. Real fallback ElevenLabs -> Piper verified.
