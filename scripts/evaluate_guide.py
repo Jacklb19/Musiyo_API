@@ -75,7 +75,8 @@ def latency_summary(values):
 
 
 def evaluate(database: Path, settings: GuideSettings, cases: list[EvaluationCase], *,
-             repeats: int = 1, review: list | None = None, allow_generation: bool = False) -> dict:
+             repeats: int = 1, review: list | None = None, allow_generation: bool = False,
+             pause_seconds: float = 0) -> dict:
     if not 1 <= repeats <= 5:
         raise ValueError("Select between one and five sequential observations per case")
     if settings.generation != "local" and not (allow_generation and settings.generation in {"ollama", "groq"}):
@@ -94,6 +95,8 @@ def evaluate(database: Path, settings: GuideSettings, cases: list[EvaluationCase
             service.generation = trace
         for case in cases:
             for observation in range(1, repeats + 1):
+                if pause_seconds and results:
+                    time.sleep(pause_seconds)  # stay under external per-minute token limits
                 trace.evidence, trace.output = [], None
                 started = time.monotonic()
                 response = service.ask(case.request)
@@ -141,6 +144,7 @@ def main():
     parser.add_argument("--cases", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--repeats", type=int, default=1)
+    parser.add_argument("--pause-seconds", type=float, default=0, help="Wait between questions (external provider limits)")
     parser.add_argument("--review-output", help="New external private worksheet containing questions, responses and evidence")
     parser.add_argument("--allow-generative-evaluation", action="store_true",
                         help="Evaluate an explicitly authorized installed pinned local generator; never downloads or selects one")
@@ -158,7 +162,8 @@ def main():
         raise ValueError("Choose a separate new external review file")
     review: list | None = [] if review_path else None
     report = evaluate(database, settings, load_cases(cases_path), repeats=arguments.repeats,
-                      review=review, allow_generation=arguments.allow_generative_evaluation)
+                      review=review, allow_generation=arguments.allow_generative_evaluation,
+                      pause_seconds=min(max(arguments.pause_seconds, 0), 60))
     if review_path:
         with review_path.open("x", encoding="utf-8") as stream:
             json.dump(dict(schema_version=1, review=review, publication="Private evaluation only; not approval"), stream,
