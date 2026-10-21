@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from .guide_repository import Evidence
 
 CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
-REPAIR = ("Tu respuesta usa estas frases de la evidencia pero omite su matiz o atribución. Reescríbela en una o dos oraciones conservando explícitamente esas palabras de matiz o atribución (por ejemplo «una de las versiones», «según», «algunos», «descrita como», «tradicionalmente», «buena parte», «denominación institucional», «puede») o deja fuera esas afirmaciones. Devuelve el mismo JSON. Frases: ")
+REPAIR = ("Tu respuesta usa estas frases de la evidencia pero omite su matiz o atribución. Reescríbela en una o dos oraciones conservando explícitamente esas palabras de matiz o atribución (por ejemplo «una de las versiones», «según», «algunos», «descrita como», «tradicionalmente», «buena parte», «denominación institucional», «puede») o deja fuera esas afirmaciones, sin repetir información. Devuelve el mismo JSON. Frases: ")
 
 
 class GroqGeneration:

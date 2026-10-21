@@ -262,3 +262,12 @@ def test_dropped_qualifier_gets_one_repair_then_falls_back(key, repaired):
         fallback = FallbackGeneration(GroqGeneration(groq_settings(key), post=fake_post), LocalExtractiveGeneration())
         calls.clear()
         assert "Una de las versiones" in fallback.generate("¿Qué es el relato?", hedged_evidence()).answer
+
+
+def test_a_question_naming_one_record_is_scoped_to_its_most_specific_title():
+    from app.guide_clarification import named_record
+    titles = {"matachin": "El Matachín", "matachin-mask": "Máscara del Matachín", "bombo": "El bombo", "flauta": "La flauta"}
+    assert named_record("¿Qué es Máscara del Matachín?", titles) == "matachin-mask"
+    assert named_record("¿Quiénes son los matachines?", titles) == "matachin"
+    assert named_record("¿Qué diferencia hay entre el bombo y la flauta?", titles) is None
+    assert named_record("¿Qué instrumento suena?", titles) is None

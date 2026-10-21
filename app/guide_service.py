@@ -9,7 +9,12 @@ from .guide_adapters import (
     Generation,
     ProviderUnavailable,
 )
-from .guide_clarification import ambiguous_records, clarification_text, current_titles
+from .guide_clarification import (
+    ambiguous_records,
+    clarification_text,
+    current_titles,
+    named_record,
+)
 from .guide_config import GuideSettings
 from .guide_contracts import GuideCitation, GuideQuestion, GuideResponse
 from .guide_ollama import REQUEST_DEADLINE
@@ -62,8 +67,10 @@ class GuideService:
                     return GuideResponse(schema_version=1, status='answered', answer=clarification_text(options, titles),
                                          citations=[GuideCitation(element_slug=slug, title=titles[slug]) for slug in options],
                                          reason=None)
+            # A question that names exactly one ficha is answered from that ficha only.
+            scope = question.element_slug or named_record(question.question, titles)
             try:
-                evidence = repository.retrieve(question.question, question.element_slug, self.embeddings, self.settings)
+                evidence = repository.retrieve(question.question, scope, self.embeddings, self.settings)
                 if not evidence:
                     return abstain()
                 output = self.generation.generate(question.question, evidence)

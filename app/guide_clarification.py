@@ -25,6 +25,22 @@ def matches(word: str, title_terms: set[str]) -> bool:
     return any(inflections_match(word, candidate) for candidate in title_terms)
 
 
+def named_record(question: str, titles: dict[str, str]) -> str | None:
+    """The single record whose whole title the question names, preferring the most specific.
+
+    "¿Qué es Máscara del Matachín?" names both "El Matachín" and "Máscara del Matachín"; the
+    longer title wins, so the answer cannot borrow the character's description for the piece.
+    """
+    asked = question_terms(question)
+    named = {slug: words for slug, words in ((slug, terms(title)) for slug, title in titles.items())
+             if words and all(matches(word, asked) for word in words)}
+    if not named:
+        return None
+    longest = max(len(words) for words in named.values())
+    best = [slug for slug, words in named.items() if len(words) == longest]
+    return best[0] if len(best) == 1 else None
+
+
 def ambiguous_records(question: str, titles: dict[str, str]) -> list[str]:
     """Slugs to offer, or [] when the question names one record or is not about a shared term."""
     asked = question_terms(question)
