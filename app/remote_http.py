@@ -15,6 +15,8 @@ from .guide_adapters import ProviderUnavailable
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 ALLOWED_HOSTS = {"api.groq.com", "api.elevenlabs.io"}
+# Groq sits behind Cloudflare, which rejects the default "Python-urllib" agent with 403.
+USER_AGENT = "Musiyo-API/1.0"
 
 
 class NoRedirects(HTTPRedirectHandler):
@@ -44,7 +46,8 @@ def post(url: str, body: bytes, headers: dict[str, str], timeout: float, max_byt
         raise ProviderUnavailable("Provider URL is not allowed")
     opener = build_opener(ProxyHandler({}), NoRedirects())
     try:
-        with opener.open(Request(url, data=body, headers=headers, method="POST"), timeout=timeout) as response:
+        request = Request(url, data=body, headers=headers | {"User-Agent": USER_AGENT}, method="POST")
+        with opener.open(request, timeout=timeout) as response:
             if response.status != 200:
                 raise ProviderUnavailable("Provider request failed")
             data = response.read(max_bytes + 1)

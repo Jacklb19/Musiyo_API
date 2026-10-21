@@ -207,3 +207,18 @@ def test_voice_chains_require_complete_explicit_engines(patch):
     with pytest.raises(ValidationError):
         VoiceSettings(**patch)
 
+
+
+def test_provider_requests_identify_the_museum_agent(monkeypatch):
+    # Regression: Groq's Cloudflare front rejected Python's default agent with 403 (real check 2026-10-20).
+    seen = {}
+
+    class Opener:
+        def open(self, request, timeout):
+            seen.update(agent=request.get_header("User-agent"), method=request.get_method())
+            raise remote_http.URLError("offline test")
+
+    monkeypatch.setattr(remote_http, "build_opener", lambda *handlers: Opener())
+    with pytest.raises(ProviderUnavailable):
+        remote_http.post("https://api.groq.com/openai/v1/chat/completions", b"{}", {}, 1, 10)
+    assert seen == {"agent": "Musiyo-API/1.0", "method": "POST"}
