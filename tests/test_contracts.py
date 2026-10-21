@@ -159,3 +159,15 @@ def test_invalid_tours_are_rejected(mutation):
         example["rooms"][0]["unexpected"] = True
     with pytest.raises(ValidationError):
         Tour.model_validate(example)
+
+
+def test_museum_credits_contract_is_canonical_and_versioned():
+    from app.museum_credits import MuseumCredits
+    schema = read_json(CONTRACTS / "museum-credits.v1.schema.json")
+    assert schema == MuseumCredits.model_json_schema()
+    example = read_json(CONTRACTS / "examples/museum_credits.json")
+    Draft202012Validator(schema).validate(example)
+    MuseumCredits.model_validate_json(json.dumps(example))
+    for mutation in ({"schema_version": 2}, {"sections": [{"key": "other", "title": "x", "lines": []}]}):
+        with pytest.raises(ValidationError):
+            MuseumCredits.model_validate_json(json.dumps(example | mutation))

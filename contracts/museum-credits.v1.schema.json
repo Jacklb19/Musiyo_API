@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "CreditLine": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "CreditLine",
+      "type": "object"
+    },
+    "CreditSection": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "enum": [
+            "project",
+            "pieces",
+            "testimonies",
+            "media",
+            "sources",
+            "technology"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "lines": {
+          "items": {
+            "$ref": "#/$defs/CreditLine"
+          },
+          "title": "Lines",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "lines"
+      ],
+      "title": "CreditSection",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/CreditSection"
+      },
+      "title": "Sections",
+      "type": "array"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "title": "MuseumCredits",
+  "type": "object"
+}

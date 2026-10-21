@@ -19,6 +19,7 @@ from app.contracts import (
 )
 from app.guide_contracts import GuideQuestion, GuideResponse
 from app.main import Tour, app
+from app.museum_credits import MuseumCredits
 from app.quiz_contracts import GuideQuiz, GuideQuizAnswer, GuideQuizAnswerResult
 from app.voice_contracts import GuideTranscription, GuideVoiceAnswer, VoiceCapabilities
 
@@ -61,6 +62,7 @@ def main() -> None:
     write_json(CONTRACTS / "catalog-facet.v1.schema.json", CatalogFacet.model_json_schema())
     write_json(CONTRACTS / "resource-access.v1.schema.json", ResourceAccess.model_json_schema())
     write_json(CONTRACTS / "validator-session.v1.schema.json", ValidatorSession.model_json_schema())
+    write_json(CONTRACTS / "museum-credits.v1.schema.json", MuseumCredits.model_json_schema())
 
 
 if __name__ == "__main__":

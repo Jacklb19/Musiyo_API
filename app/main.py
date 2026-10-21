@@ -27,6 +27,7 @@ from .db import (
 )
 from .guide_routes import install_guide_routes
 from .guide_service import GuideService
+from .museum_credits import MuseumCredits, museum_credits
 from .public_repository import PublicRepository
 from .quiz_routes import install_quiz_routes
 from .quiz_service import QuizService
@@ -104,6 +105,12 @@ def create_app(
     @app.get("/api/v1/collections", response_model=list[CatalogFacet])
     def list_collections(db: Db):
         return PublicRepository(db, now).facets("collections")
+
+    @app.get("/api/v1/credits", response_model=MuseumCredits)
+    def get_credits(db: Db, schema_version: int = 1):
+        if schema_version != 1:
+            raise HTTPException(409, "Versión de contrato incompatible")
+        return museum_credits(PublicRepository(db, now).elements())
 
     @app.get("/api/v1/catalog", response_model=CatalogPage)
     def get_catalog(db: Db, query: Annotated[str, Query(max_length=200)] = "",
