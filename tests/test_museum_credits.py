@@ -30,7 +30,7 @@ def test_credits_gather_authorized_records_once_and_in_film_order():
 def test_credits_endpoint_follows_the_public_contract(guide):
     client = TestClient(create_app(guide[1]))
     body = client.get("/api/v1/credits").json()
-    assert body["schema_version"] == 1 and body["title"] == "Créditos"
+    assert body["schema_version"] == 1 and body["title"] == "Musiyo Bëtsknaté" and body["subtitle"]
     pieces = next(section for section in body["sections"] if section["key"] == "pieces")
     assert {"role": "testing", "text": "Synthetic role"} in pieces["lines"]
     assert client.get("/api/v1/credits", params={"schema_version": 2}).status_code == 409

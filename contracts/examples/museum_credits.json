@@ -1,8 +1,9 @@
 {
   "schema_version": 1,
-  "title": "Créditos",
+  "title": "[EJEMPLO] Nombre del museo",
+  "subtitle": "[EJEMPLO] Subtítulo",
   "sections": [
-    {"key": "project", "title": "Musiyo Bëtsknaté", "lines": [{"role": "Autor del prototipo", "text": "[EJEMPLO] Nombre del autor"}]},
+    {"key": "project", "title": "Proyecto", "lines": [{"role": "Autor del prototipo", "text": "[EJEMPLO] Nombre del autor"}]},
     {"key": "pieces", "title": "Piezas y textos", "lines": [{"role": "Pertenencia colectiva", "text": "[EJEMPLO] Cabildo"}]},
     {"key": "testimonies", "title": "Testimonios", "lines": [{"role": null, "text": "[EJEMPLO] Mayor de la comunidad"}]},
     {"key": "sources", "title": "Fuentes", "lines": [{"role": null, "text": "[EJEMPLO] Autora, A. (2020). Título."}]},

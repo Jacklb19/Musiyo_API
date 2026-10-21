@@ -34,6 +34,7 @@ class CreditSection(ContractModel):
 class MuseumCredits(ContractModel):
     schema_version: Literal[1] = 1
     title: str
+    subtitle: str
     sections: list[CreditSection] = Field(default_factory=list)
 
 
@@ -67,7 +68,7 @@ def museum_credits(elements: list[Element]) -> MuseumCredits:
                 sources_by_work[work] = reference
     sources = sorted(sources_by_work.values(), key=str.casefold)
     sections = [
-        CreditSection(key="project", title="Musiyo Bëtsknaté",
+        CreditSection(key="project", title="Proyecto",
                       lines=[CreditLine(role=credit.role, text=credit.name) for credit in (project.credits if project else [])]),
         CreditSection(key="pieces", title="Piezas y textos",
                       lines=[CreditLine(role=role or None, text=", ".join(names)) for role, names in roles.items() if names]),
@@ -79,4 +80,4 @@ def museum_credits(elements: list[Element]) -> MuseumCredits:
         CreditSection(key="technology", title="Tecnología del guía",
                       lines=[CreditLine(role=role, text=text) for role, text in TECHNOLOGY]),
     ]
-    return MuseumCredits(title="Créditos", sections=[section for section in sections if section.lines])
+    return MuseumCredits(title="Musiyo Bëtsknaté", subtitle="Museo virtual del Carnaval del Perdón", sections=[section for section in sections if section.lines])

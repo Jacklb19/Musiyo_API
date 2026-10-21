@@ -3401,6 +3401,10 @@
             "type": "string",
             "title": "Title"
           },
+          "subtitle": {
+            "type": "string",
+            "title": "Subtitle"
+          },
           "sections": {
             "items": {
               "$ref": "#/components/schemas/CreditSection"
@@ -3412,7 +3416,8 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "title"
+          "title",
+          "subtitle"
         ],
         "title": "MuseumCredits"
       },

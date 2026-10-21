@@ -74,6 +74,10 @@
       "title": "Title",
       "type": "string"
     },
+    "subtitle": {
+      "title": "Subtitle",
+      "type": "string"
+    },
     "sections": {
       "items": {
         "$ref": "#/$defs/CreditSection"
@@ -83,7 +87,8 @@
     }
   },
   "required": [
-    "title"
+    "title",
+    "subtitle"
   ],
   "title": "MuseumCredits",
   "type": "object"
