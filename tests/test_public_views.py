@@ -7,7 +7,13 @@ import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
 
 from app.content_tables import CONTENT, EmbeddingVector
-from app.db import ElementRecord, ResourceRecord, TourRecord, make_session_factory
+from app.db import (
+    ElementRecord,
+    PointElementRecord,
+    ResourceRecord,
+    TourRecord,
+    make_session_factory,
+)
 from app.migrations import upgrade_database
 from app.public_repository import ASSISTANT_ELEMENTS, PublicRepository
 from tests.test_public_api import NOW, client_with_data
@@ -165,6 +171,39 @@ def test_normalized_metadata_round_trip_uses_the_existing_wire_contract(tmp_path
     assert item["category"]["slug"] == "test-category" and item["community"]["people"] == "shared"
     assert item["materials"] == ["Test material"] and item["blocks"][0]["kind"] == "documented_fact"
     assert item["collections"][0]["slug"] == "test-collection"
+
+
+def test_tour_and_credits_cost_the_same_queries_for_one_ficha_or_many(tmp_path):
+    # Online each query is a round trip to the database: reading fichas one by one made the
+    # tour take 15 s on Render, past the Unity player's timeout.
+    client = client_with_data(tmp_path)
+    factory = make_session_factory(f"sqlite:///{tmp_path / 'test.db'}")
+    counted = []
+    listener = lambda *args, **kwargs: counted.append(1)  # noqa: E731
+
+    def queries(path):
+        counted.clear()
+        sa.event.listen(sa.engine.Engine, "before_cursor_execute", listener)
+        try:
+            assert client.get(path).status_code == 200
+        finally:
+            sa.event.remove(sa.engine.Engine, "before_cursor_execute", listener)
+        return len(counted)
+
+    paths = ["/api/v1/tours/recorrido-prueba", "/api/v1/credits", "/api/v1/elements"]
+    before = [queries(path) for path in paths]
+    with factory.begin() as db:
+        for index in range(10):
+            db.add(ElementRecord(id=f"extra-{index}", title=f"Extra {index}", description="Solo prueba",
+                approval_status="approved", approved_at=NOW, authorized_from=NOW - timedelta(days=1)))
+            db.flush()
+            db.add(PointElementRecord(point_id="point-02", element_id=f"extra-{index}", order=index + 1))
+            db.execute(CONTENT["authorizations"].insert().values(element_id=f"extra-{index}",
+                approved_culturally=True, authorized_from=NOW - timedelta(days=1)))
+            db.execute(CONTENT["credits"].insert().values(element_id=f"extra-{index}", name="Autor de prueba"))
+    assert len(client.get("/api/v1/elements").json()) == 11
+    assert [queries(path) for path in paths] == before
+    assert before[0] <= 20
 
 
 def test_postgresql_metadata_compiles_with_vector_and_timestamp_types():

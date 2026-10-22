@@ -113,11 +113,6 @@ class PublicRepository:
                 has_narration=any(item["kind"] == "narration" for item in available)))
         return CatalogPage(schema_version=1, items=items, total=total, limit=limit, offset=offset)
 
-    def metadata(self, name: str, element_id: str):
-        table = CONTENT[name]
-        return self.db.execute(sa.select(table).join(ELEMENTS, ELEMENTS.c.id == table.c.element_id)
-            .where(ELEMENTS.c.id == element_id)).mappings().all()
-
     def resource(self, element_id: str, resource_id: str):
         return self.db.execute(sa.select(RESOURCES).where(
             RESOURCES.c.id == resource_id, RESOURCES.c.element_id == element_id)).mappings().first()
@@ -131,35 +126,65 @@ class PublicRepository:
 
     def element(self, slug: str) -> Element | None:
         record = self.db.execute(sa.select(ELEMENTS).where(ELEMENTS.c.id == slug)).mappings().first()
-        return self.format_element(record) if record else None
+        return self.format_elements([record])[0] if record else None
 
     def elements(self) -> list[Element]:
         rows = self.db.execute(sa.select(ELEMENTS).order_by(ELEMENTS.c.id)).mappings().all()
-        return [self.format_element(row) for row in rows]
+        return self.format_elements(rows)
 
-    def format_element(self, record) -> Element:
-        key = record["id"]
-        details = self.metadata("element_details", key)
-        detail = details[0] if details else record
-        attributes = self.metadata("element_metadata", key)
-        attributes = attributes[0] if attributes else {}
+    def grouped(self, keys: list[str], statement, column) -> dict[str, list]:
+        # One query for every requested parent: an online database pays a round trip per query,
+        # and a tour of twenty fichas read one by one cost some two hundred of them (15 s on Render).
+        groups: dict[str, list] = {key: [] for key in keys}
+        if keys:
+            for row in self.db.execute(statement.where(column.in_(keys))).mappings().all():
+                groups[row[column.key]].append(row)
+        return groups
+
+    def metadata_by_element(self, name: str, keys: list[str]) -> dict[str, list]:
+        table = CONTENT[name]
+        return self.grouped(keys, sa.select(table).join(ELEMENTS, ELEMENTS.c.id == table.c.element_id), table.c.element_id)
+
+    def format_elements(self, records) -> list[Element]:
+        keys = [record["id"] for record in records]
+        details = self.metadata_by_element("element_details", keys)
+        attributes = self.metadata_by_element("element_metadata", keys)
+        blocks = self.metadata_by_element("detail_blocks", keys)
+        credits = self.metadata_by_element("credits", keys)
+        restrictions = self.metadata_by_element("restrictions", keys)
         sources_table, links = CONTENT["sources"], CONTENT["element_sources"]
-        source_rows = self.db.execute(sa.select(sources_table).join(links, sources_table.c.id == links.c.source_id)
-            .join(ELEMENTS, ELEMENTS.c.id == links.c.element_id).where(ELEMENTS.c.id == key)
-            .order_by(sources_table.c.id)).mappings().all()
+        sources = self.grouped(keys, sa.select(sources_table, links.c.element_id)
+            .join(links, sources_table.c.id == links.c.source_id)
+            .join(ELEMENTS, ELEMENTS.c.id == links.c.element_id).order_by(sources_table.c.id), links.c.element_id)
+        collections_table, members = CONTENT["collections"], CONTENT["collection_elements"]
+        collections = self.grouped(keys, sa.select(collections_table, members.c.element_id)
+            .join(members, collections_table.c.id == members.c.collection_id)
+            .join(ELEMENTS, ELEMENTS.c.id == members.c.element_id)
+            .order_by(collections_table.c.order, collections_table.c.slug), members.c.element_id)
+        resources = self.grouped(keys, sa.select(RESOURCES).order_by(RESOURCES.c.id), RESOURCES.c.element_id)
+        terms: dict[str, dict] = {}
+        for name, field in (("categories", "category_id"), ("communities", "community_id")):
+            ids = {rows[0][field] for rows in attributes.values() if rows and rows[0][field]}
+            terms[name] = {row["id"]: row for row in self.db.execute(sa.select(CONTENT[name])
+                .where(CONTENT[name].c.id.in_(ids))).mappings().all()} if ids else {}
+        authors = {rows[0]["corrected_by"] for rows in details.values() if rows and rows[0]["corrected_by"]}
+        validators = CONTENT["validators"]
+        names: dict[str, str] = {row["id"]: row["name"] for row in self.db.execute(sa.select(validators.c.id, validators.c.name)
+            .where(validators.c.id.in_(authors))).mappings().all()} if authors else {}
+        return [self.format_element(record, details[key], attributes[key], sources[key], blocks[key], credits[key],
+            restrictions[key], collections[key], resources[key], terms, names)
+            for record, key in zip(records, keys)]
+
+    def format_element(self, record, details, attributes, source_rows, blocks, credits, restrictions,
+                       collections, available, terms, names) -> Element:
+        key = record["id"]
+        detail = details[0] if details else record
+        attributes = attributes[0] if attributes else {}
         sources: list[dict[str, Any]] = [{field: row[field] for field in ("id", "kind", "reference", "url")} for row in source_rows]
-        blocks = sorted(self.metadata("detail_blocks", key), key=lambda block: block["order"])
-        credits = sorted(self.metadata("credits", key), key=lambda credit: (credit["order"], credit["id"]))
-        restrictions = self.metadata("restrictions", key)
-        category = self.db.execute(sa.select(CONTENT["categories"]).where(
-            CONTENT["categories"].c.id == attributes.get("category_id"))).mappings().first()
-        community = self.db.execute(sa.select(CONTENT["communities"]).where(
-            CONTENT["communities"].c.id == attributes.get("community_id"))).mappings().first()
-        collections = self.db.execute(sa.select(CONTENT["collections"])
-            .join(CONTENT["collection_elements"], CONTENT["collections"].c.id == CONTENT["collection_elements"].c.collection_id)
-            .join(ELEMENTS, ELEMENTS.c.id == CONTENT["collection_elements"].c.element_id)
-            .where(ELEMENTS.c.id == key).order_by(CONTENT["collections"].c.order, CONTENT["collections"].c.slug)).mappings().all()
-        available = self.resources(key)
+        blocks = sorted(blocks, key=lambda block: block["order"])
+        credits = sorted(credits, key=lambda credit: (credit["order"], credit["id"]))
+        category = terms["categories"].get(attributes.get("category_id"))
+        community = terms["communities"].get(attributes.get("community_id"))
         available_ids = {item["id"] for item in available}
         credits = [item for item in credits if not item["resource_id"] or item["resource_id"] in available_ids]
         restrictions = [item for item in restrictions if not item["resource_id"] or item["resource_id"] in available_ids]
@@ -178,7 +203,7 @@ class PublicRepository:
                     item["id"] == resource["subtitles_resource_id"] for item in available) else None})
         modified = None
         if details and detail["corrected_by"] and detail["corrected_at"]:
-            author = self.db.scalar(sa.select(CONTENT["validators"].c.name).where(CONTENT["validators"].c.id == detail["corrected_by"]))
+            author = names.get(detail["corrected_by"])
             if author:
                 modified = {"date": detail["corrected_at"], "author": author}
         # Rows created by the prototype after migration keep their existing text only.
@@ -215,22 +240,22 @@ class PublicRepository:
             thumbnail_resource_id=next((item.id for item in element.resources if item.kind == "image"), None),
             has_3d_model=any(item.kind == "model_3d" for item in element.resources),
             has_narration=any(item.kind == "narration" for item in element.resources)) for slug, element in elements.items()}
+        room_ids = [room["id"] for room in rooms]
+        points = self.grouped(room_ids, sa.select(POINTS).order_by(POINTS.c.order, POINTS.c.id), POINTS.c.room_id)
+        point_ids = [point["id"] for room_points in points.values() for point in room_points]
+        links = self.grouped(point_ids, sa.select(LINKS).order_by(LINKS.c.order, LINKS.c.element_id), LINKS.c.point_id)
+        ambient = self.grouped(room_ids, sa.select(RESOURCES.c.id, RESOURCES.c.room_id)
+            .where(RESOURCES.c.kind == "ambient_audio").order_by(RESOURCES.c.id), RESOURCES.c.room_id)
         result = []
         for room in rooms:
-            points = self.db.execute(sa.select(POINTS).where(POINTS.c.room_id == room["id"])
-                .order_by(POINTS.c.order, POINTS.c.id)).mappings().all()
-            point_contracts = []
-            for point in points:
-                links = self.db.execute(sa.select(LINKS).where(LINKS.c.point_id == point["id"])
-                    .order_by(LINKS.c.order, LINKS.c.element_id)).mappings().all()
-                point_contracts.append({"key": point["id"], "name": point["name"] or point["id"],
-                    "order": point["order"], "activation": point["activation"],
-                    "elements": [summaries[link["element_id"]] for link in links if link["element_id"] in summaries]})
-            ambient = self.db.scalar(sa.select(RESOURCES.c.id).where(RESOURCES.c.room_id == room["id"],
-                RESOURCES.c.kind == "ambient_audio").order_by(RESOURCES.c.id))
+            point_contracts = [{"key": point["id"], "name": point["name"] or point["id"],
+                "order": point["order"], "activation": point["activation"],
+                "elements": [summaries[link["element_id"]] for link in links[point["id"]] if link["element_id"] in summaries]}
+                for point in points[room["id"]]]
             result.append(Room.model_validate({"key": room["id"], "name": room["name"] or room["id"],
                 "order": room["order"], "short_description": room["short_description"],
-                "ambient_audio_resource_id": ambient, "points": point_contracts}))
+                "ambient_audio_resource_id": ambient[room["id"]][0]["id"] if ambient[room["id"]] else None,
+                "points": point_contracts}))
         guide_key, guide_name, guide_room = tour["guide_key"], tour["guide_name"], tour["guide_room_key"]
         guide = Guide(key=guide_key, name=guide_name, room_key=guide_room, available=tour["guide_available"]) \
             if guide_key and guide_name and guide_room and guide_room in {room.key for room in result} else None
