@@ -306,11 +306,16 @@ def verify_validity(database_url=None):
         return {"removed_fragments": result.rowcount}
 
 
-def reindex(database_url=None, element_id=None):
+def reindex(database_url=None, element_id=None, check=False):
     from .guide_config import GuideSettings
     from .guide_providers import configured_embeddings
-    from .guide_repository import index_evidence
+    from .guide_repository import index_evidence, index_status
     adapter = configured_embeddings(GuideSettings.from_environment())
+    if check:
+        # Read-only: report records whose fragments no longer match what they publish.
+        with make_session_factory(database_url)() as db:
+            stale = [item for item in index_status(db, embeddings=adapter) if element_id in (None, item["element"])]
+        return {"check": True, "stale_records": stale, "embedding_model": adapter.model}
     with make_session_factory(database_url).begin() as db:
         count = index_evidence(db, element_id, embeddings=adapter)
     return {"indexed_fragments": count, "embedding_status": "local", "embedding_model": adapter.model}
