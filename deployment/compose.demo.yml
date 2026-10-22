@@ -28,13 +28,19 @@ services:
       MUSIYO_STORAGE_BACKEND: ${MUSIYO_STORAGE_BACKEND:-local}
       MUSIYO_RESOURCE_SIGNING_KEY: ${MUSIYO_RESOURCE_SIGNING_KEY:?Set a server-only signing key}
       MUSIYO_WEB_ORIGIN: ${MUSIYO_WEB_ORIGIN:-http://localhost:18080}
-      MUSIYO_GUIDE_GENERATION: ${MUSIYO_GUIDE_GENERATION:-local}
+      MUSIYO_GUIDE_CONFIG: ${MUSIYO_GUIDE_CONFIG_IN_CONTAINER:-}
+      MUSIYO_VOICE_CONFIG: ${MUSIYO_VOICE_CONFIG_IN_CONTAINER:-}
+      MUSIYO_QUIZ_BUNDLE: ${MUSIYO_QUIZ_BUNDLE_IN_CONTAINER:-}
       MUSIYO_S3_BUCKET: ${MUSIYO_S3_BUCKET:-}
       MUSIYO_S3_REGION: ${MUSIYO_S3_REGION:-us-east-1}
       MUSIYO_S3_ENDPOINT: ${MUSIYO_S3_ENDPOINT:-}
       AWS_EC2_METADATA_SERVICE_ENDPOINT: ${MUSIYO_METADATA_ENDPOINT:-http://169.254.169.254}
       FORWARDED_ALLOW_IPS: "*"
-    volumes: ["private-files:/storage"]
+    volumes:
+      - private-files:/storage
+      # Guide/voice/quiz settings and provider keys: external folders, read-only (see server-config/README.txt).
+      - ${MUSIYO_SERVER_CONFIG_DIR:?Run scripts.demo create-env}:/config:ro
+      - ${MUSIYO_SECRETS_DIR:?Run scripts.demo create-env}:/run/secrets/musiyo:ro
     restart: unless-stopped
     depends_on:
       postgres: {condition: service_healthy}

@@ -7,3 +7,4 @@
 !fixtures/**
 !alembic.ini
 !requirements.runtime.txt
+!scripts/transfer_museum.py

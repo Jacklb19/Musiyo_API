@@ -1,0 +1,2 @@
+{"generation": "groq", "embeddings": "local", "groq_model": "openai/gpt-oss-120b",
+ "groq_api_key_file": "/run/secrets/musiyo/groq.key", "generation_fallback": "local"}

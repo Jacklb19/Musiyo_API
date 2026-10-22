@@ -8,6 +8,7 @@ COPY app ./app
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY fixtures ./fixtures
+COPY scripts/transfer_museum.py ./scripts/transfer_museum.py
 RUN pip install --no-cache-dir --no-deps -e . && useradd --uid 10001 --create-home musiyo
 USER musiyo
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--proxy-headers"]

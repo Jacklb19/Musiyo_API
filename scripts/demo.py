@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import secrets
+import shutil
 import subprocess
 import tarfile
 from datetime import datetime, timezone
@@ -100,20 +101,43 @@ def restore(environment, manifest_path, target):
                       'activation': 'Inspect the restored database/files before selecting them. Live configuration is unchanged.'}))
 
 
+def server_config(folder: Path, quiz_bundle: str | None) -> Path:
+    # The container reads these at /config; the templates hold container paths, never keys.
+    folder.mkdir(parents=True, exist_ok=False)
+    for name in ('guide.json', 'voice.json'):
+        shutil.copyfile(ROOT / 'deployment/server-config' / name, folder / name)
+    if quiz_bundle:
+        shutil.copyfile(external_path(quiz_bundle), folder / 'quiz.json')
+    return folder
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['create-env', 'migrate', 'start', 'stop', 'health', 'backup', 'restore'])
+    parser.add_argument('operation', choices=['create-env', 'migrate', 'transfer', 'start', 'stop', 'health', 'backup', 'restore'])
     parser.add_argument('--env-file', required=True)
     parser.add_argument('--backup-folder')
     parser.add_argument('--backup-manifest')
     parser.add_argument('--restore-database')
+    parser.add_argument('--quiz-bundle', help='create-env: published quiz bundle to serve (external file)')
+    parser.add_argument('--secrets-dir', help='create-env: external folder with groq.key and elevenlabs.key')
+    parser.add_argument('--museum-snapshot', help='transfer: scripts.local_backup folder (museum.db + private/)')
     args = parser.parse_args()
     environment = external_path(args.env_file)
     if args.operation == 'create-env':
         environment.parent.mkdir(parents=True, exist_ok=True)
+        config = server_config(environment.parent / 'server-config', args.quiz_bundle)
+        secret_folder = external_path(args.secrets_dir) if args.secrets_dir else environment.parent / 'server-secrets'
+        secret_folder.mkdir(parents=True, exist_ok=True)
         with environment.open('x', encoding='utf-8') as stream:
             stream.write('MUSIYO_DB_PASSWORD=' + secrets.token_hex(24) + '\nMUSIYO_RESOURCE_SIGNING_KEY=' + secrets.token_hex(32) + '\n')
+            stream.write(f'MUSIYO_SERVER_CONFIG_DIR={config.as_posix()}\nMUSIYO_SECRETS_DIR={secret_folder.as_posix()}\n')
+            stream.write('MUSIYO_GUIDE_CONFIG_IN_CONTAINER=/config/guide.json\nMUSIYO_VOICE_CONFIG_IN_CONTAINER=/config/voice.json\n')
+            if args.quiz_bundle:
+                stream.write('MUSIYO_QUIZ_BUNDLE_IN_CONTAINER=/config/quiz.json\n')
         environment.chmod(0o600)
+        missing = [name for name in ('groq.key', 'elevenlabs.key') if not (secret_folder / name).is_file()]
+        if missing:
+            print(f'Put {", ".join(missing)} in {secret_folder} before start (without them the guide quotes fichas and voice is off).')
         return
     if not environment.is_file():
         parser.error('Create or select an existing external environment file first')
@@ -123,6 +147,20 @@ def main():
             compose(environment, 'run', '--rm', 'api', 'musiyo', 'migrate')
         else:
             compose(environment, 'up', '-d', 'api', 'proxy')
+    elif args.operation == 'transfer':
+        # Copy a verified local museum snapshot into the empty, migrated deployment database (inside the network).
+        if not args.museum_snapshot:
+            parser.error('--museum-snapshot is required')
+        snapshot = external_path(args.museum_snapshot)
+        if not (snapshot / 'museum.db').is_file() or not (snapshot / 'private').is_dir():
+            parser.error('The snapshot must hold museum.db and private/ (python -m scripts.local_backup backup)')
+        values = environment_values(environment)
+        target = f"postgresql+psycopg://musiyo:{values['MUSIYO_DB_PASSWORD']}@postgres:5432/{database_name(environment)}"
+        storage = [] if values.get('MUSIYO_STORAGE_BACKEND') == 's3' else ['--target-storage', '/storage']
+        compose(environment, 'up', '-d', 'postgres', 'storage-init')
+        compose(environment, 'run', '--rm', '-v', f'{snapshot.as_posix()}:/source:ro', 'api', 'python', '-m', 'scripts.transfer_museum',
+                '--source-database', '/source/museum.db', '--source-storage', '/source/private',
+                '--target-database-url', target, *storage)
     elif args.operation == 'stop':
         compose(environment, 'stop')
     elif args.operation == 'health':
