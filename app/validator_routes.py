@@ -4,7 +4,14 @@ from urllib.parse import urlsplit
 
 from fastapi import HTTPException, Request, Response
 
-from .contracts import DetailCorrection, Element, LoginRequest, ValidatorSession
+from .contracts import (
+    DetailCorrection,
+    Element,
+    LoginRequest,
+    RegistrationAvailability,
+    RegistrationRequest,
+    ValidatorSession,
+)
 from .validator_access import COOKIE_NAME, COOKIE_PATH, SESSION_SECONDS, ValidatorAccess
 
 
@@ -39,6 +46,26 @@ def install_validator_routes(app, factory, now, web_origin=None):
             request.client.host if request.client else "unknown")
         if status != 200:
             raise HTTPException(status, "No fue posible iniciar sesión" if status == 401 else "Demasiados intentos; inténtalo más tarde")
+        no_cache(response)
+        response.set_cookie(COOKIE_NAME, token, max_age=SESSION_SECONDS, httponly=True, secure=True,
+            samesite="strict", path=COOKIE_PATH)
+        return info
+
+    @app.get("/api/v1/auth/registration", response_model=RegistrationAvailability)
+    def registration(response: Response):
+        no_cache(response)
+        return RegistrationAvailability(enabled=access.registration_enabled())
+
+    @app.post("/api/v1/auth/register", response_model=ValidatorSession)
+    def register(details: RegistrationRequest, request: Request, response: Response):
+        check_origin(request)
+        status, token, info = access.register(details.username, details.name, details.password.get_secret_value(),
+            details.invitation_code.get_secret_value(), request.client.host if request.client else "unknown")
+        if status != 200:
+            raise HTTPException(status, {403: "El registro de validadores no está habilitado",
+                                         401: "El código de invitación no es válido",
+                                         409: "Ese usuario ya existe; elige otro",
+                                         429: "Demasiados intentos; inténtalo más tarde"}[status])
         no_cache(response)
         response.set_cookie(COOKIE_NAME, token, max_age=SESSION_SECONDS, httponly=True, secure=True,
             samesite="strict", path=COOKIE_PATH)

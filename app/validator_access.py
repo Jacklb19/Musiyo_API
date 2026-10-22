@@ -1,8 +1,12 @@
 """Validator sessions and text-only corrections; publication is checked on every edit."""
 import hashlib
+import hmac
 import logging
+import os
 import secrets
+import uuid
 from datetime import timedelta
+from pathlib import Path
 
 import sqlalchemy as sa
 from argon2 import PasswordHasher
@@ -21,6 +25,24 @@ SESSION_SECONDS = 8 * 60 * 60
 HASHER = PasswordHasher()
 DUMMY_PASSWORD_HASH = HASHER.hash(secrets.token_urlsafe(32))
 LOGGER = logging.getLogger(__name__)
+
+
+INVITATION_FILE = "MUSIYO_VALIDATOR_INVITATION_FILE"
+MINIMUM_INVITATION_LENGTH = 12
+
+
+def invitation_code() -> str | None:
+    """The shared code the owner hands to trusted validators, read at call time (rotation needs no restart).
+
+    Registration stays closed unless a server-only file holds a code of at least 12 characters."""
+    selected = os.getenv(INVITATION_FILE)
+    if not selected:
+        return None
+    try:
+        code = Path(selected).read_text(encoding="utf-8-sig").strip()
+    except OSError:
+        return None
+    return code if len(code) >= MINIMUM_INVITATION_LENGTH else None
 
 
 class ValidatorAccess:
@@ -54,21 +76,65 @@ class ValidatorAccess:
         if db.bind.dialect.name == "sqlite":
             db.execute(sa.text("BEGIN IMMEDIATE"))
 
-    def login(self, username: str, password: str, ip: str):
-        now = self.now()
+    @staticmethod
+    def registration_enabled() -> bool:
+        return invitation_code() is not None
+
+    def limited(self, db, ip: str, now) -> bool:
+        """Shared per-source budget for login and registration attempts (10 per minute).
+
+        On PostgreSQL an advisory lock serializes each source across workers without keeping its address."""
+        attempts = CONTENT["validator_login_attempts"]
         ip_hash = hashlib.sha256(ip.encode()).hexdigest()
-        accounts, attempts, sessions = (CONTENT[name] for name in ("validators", "validator_login_attempts", "validator_sessions"))
+        if db.bind.dialect.name == "postgresql":
+            db.execute(sa.select(sa.func.pg_advisory_xact_lock(int(ip_hash[:15], 16))))
+        db.execute(attempts.delete().where(attempts.c.occurred_at <= now - timedelta(seconds=60)))
+        count = db.scalar(sa.select(sa.func.count()).select_from(attempts).where(attempts.c.ip_hash == ip_hash)) or 0
+        if count >= 10:
+            return True
+        db.execute(attempts.insert().values(ip_hash=ip_hash, occurred_at=now))
+        return False
+
+    def open_session(self, db, account_id: str, username: str, name: str, now):
+        sessions = CONTENT["validator_sessions"]
+        db.execute(sessions.delete().where(sessions.c.expires_at <= now))
+        token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+        db.execute(sessions.insert().values(id=self.token_hash(token), validator_id=account_id,
+            csrf_token=csrf, expires_at=now + timedelta(seconds=SESSION_SECONDS)))
+        return token, ValidatorSession(schema_version=1, authenticated=True,
+            user=ValidatorProfile(username=username, name=name), csrf_token=csrf)
+
+    def register(self, username: str, name: str, password: str, code: str, ip: str):
+        """Create an active validator when the invitation code matches, then sign it in."""
+        expected = invitation_code()
+        if expected is None:
+            return 403, None, None
+        now = self.now()
+        accounts = CONTENT["validators"]
         with self.factory.begin() as db:
             self.write_lock(db)
-            if db.bind.dialect.name == "postgresql":
-                # Serialize each source across workers without keeping the source address.
-                lock_key = int(ip_hash[:15], 16)
-                db.execute(sa.select(sa.func.pg_advisory_xact_lock(lock_key)))
-            db.execute(attempts.delete().where(attempts.c.occurred_at <= now - timedelta(seconds=60)))
-            count = db.scalar(sa.select(sa.func.count()).select_from(attempts).where(attempts.c.ip_hash == ip_hash)) or 0
-            if count >= 10:
+            if self.limited(db, ip, now):
                 return 429, None, None
-            db.execute(attempts.insert().values(ip_hash=ip_hash, occurred_at=now))
+            given = hashlib.sha256(code.strip().encode()).digest()
+            if not hmac.compare_digest(given, hashlib.sha256(expected.encode()).digest()):
+                return 401, None, None
+            username = username.strip().lower()
+            if db.scalar(sa.select(accounts.c.id).where(sa.func.lower(accounts.c.username) == username)):
+                return 409, None, None
+            account_id = str(uuid.uuid4())
+            db.execute(accounts.insert().values(id=account_id, username=username, name=" ".join(name.split()),
+                                                password_hash=HASHER.hash(password)))
+            token, info = self.open_session(db, account_id, username, " ".join(name.split()), now)
+        LOGGER.info("validator_registered validator_id=%s", account_id)
+        return 200, token, info
+
+    def login(self, username: str, password: str, ip: str):
+        now = self.now()
+        accounts = CONTENT["validators"]
+        with self.factory.begin() as db:
+            self.write_lock(db)
+            if self.limited(db, ip, now):
+                return 429, None, None
             matches = db.execute(sa.select(accounts).where(sa.or_(accounts.c.username == username.strip(),
                 sa.func.lower(accounts.c.username) == username.strip().lower())).with_for_update()).mappings().all()
             # Legacy case variants must not select an arbitrary identity.
@@ -90,12 +156,7 @@ class ValidatorAccess:
                     failed_attempts=failed, locked_until=now + timedelta(minutes=15) if failed >= 5 else None))
                 return 401, None, None
             db.execute(accounts.update().where(accounts.c.id == account["id"]).values(failed_attempts=0, locked_until=None))
-            db.execute(sessions.delete().where(sessions.c.expires_at <= now))
-            token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
-            db.execute(sessions.insert().values(id=self.token_hash(token), validator_id=account["id"],
-                csrf_token=csrf, expires_at=now + timedelta(seconds=SESSION_SECONDS)))
-            info = ValidatorSession(schema_version=1, authenticated=True,
-                user=ValidatorProfile(username=account["username"], name=account["name"]), csrf_token=csrf)
+            token, info = self.open_session(db, account["id"], account["username"], account["name"], now)
             return 200, token, info
 
     def require_session(self, db, token: str | None, csrf: str | None):
