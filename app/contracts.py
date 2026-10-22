@@ -236,6 +236,18 @@ class LoginRequest(ContractModel):
     password: SecretStr = Field(min_length=1, max_length=1024)
 
 
+class RegistrationRequest(ContractModel):
+    username: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{2,99}$")
+    name: str = Field(min_length=2, max_length=120)
+    password: SecretStr = Field(min_length=12, max_length=1024)
+    invitation_code: SecretStr = Field(min_length=1, max_length=256)
+
+
+class RegistrationAvailability(ContractModel):
+    schema_version: Literal[1] = 1
+    enabled: bool
+
+
 class InterpretationCorrection(ContractModel):
     block_id: Identifier
     text: str = Field(min_length=1, max_length=3000)

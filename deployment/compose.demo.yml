@@ -31,6 +31,8 @@ services:
       MUSIYO_GUIDE_CONFIG: ${MUSIYO_GUIDE_CONFIG_IN_CONTAINER:-}
       MUSIYO_VOICE_CONFIG: ${MUSIYO_VOICE_CONFIG_IN_CONTAINER:-}
       MUSIYO_QUIZ_BUNDLE: ${MUSIYO_QUIZ_BUNDLE_IN_CONTAINER:-}
+      # Validator self-registration opens only when this secret file holds an invitation code (12+ characters).
+      MUSIYO_VALIDATOR_INVITATION_FILE: /run/secrets/musiyo/validator-invitation.txt
       MUSIYO_S3_BUCKET: ${MUSIYO_S3_BUCKET:-}
       MUSIYO_S3_REGION: ${MUSIYO_S3_REGION:-us-east-1}
       MUSIYO_S3_ENDPOINT: ${MUSIYO_S3_ENDPOINT:-}

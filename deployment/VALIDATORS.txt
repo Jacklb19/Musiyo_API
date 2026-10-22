@@ -1,0 +1,22 @@
+VALIDADORES: REGISTRO E INICIO DE SESIÓN
+
+Quién es: la persona que corrige el título, la descripción y las interpretaciones de las fichas. No puede cambiar
+hechos documentados, testimonios, fuentes, créditos, categorías ni recursos.
+
+Registro desde la Web (/validador, pestaña «Crear cuenta»)
+- Nombre, usuario, contraseña (mínimo 12 caracteres) y el CÓDIGO DE INVITACIÓN que entrega el responsable del museo.
+- Con el código correcto la cuenta queda activa y la persona entra de inmediato.
+- Sin código configurado en el servidor el registro está cerrado y la pestaña no aparece.
+
+Cómo habilitarlo en el servidor
+- Crear un archivo de texto solo para el servidor con el código (una línea, 12 caracteres o más) y apuntar a él con
+  MUSIYO_VALIDATOR_INVITATION_FILE. En Docker/AWS: validator-invitation.txt en la carpeta de llaves (se monta en
+  /run/secrets/musiyo). En Render: Secret File «validator-invitation.txt» (queda en /etc/secrets/).
+- Se lee en cada intento: para cambiar el código basta editar el archivo; para cerrar el registro, borrarlo.
+- Comparte el código solo con personas de confianza; cualquiera con el código puede crear una cuenta.
+
+Seguridad
+- Contraseñas con Argon2; cookie de sesión segura (HttpOnly, Secure, SameSite=Strict) de 8 horas con token CSRF.
+- Registro e inicio de sesión comparten el límite de 10 intentos por minuto por origen; 5 contraseñas fallidas
+  bloquean la cuenta 15 minutos. Solo se aceptan peticiones del mismo sitio (MUSIYO_WEB_ORIGIN).
+- El comando `musiyo create-validator` sigue disponible para quien administra el servidor.
