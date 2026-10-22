@@ -1,9 +1,10 @@
 """Reviewed short descriptions of tour rooms (compare-and-set of the whole text).
 
 Each change names one tour, one room, the exact text the room shows today and its replacement.
---dry-run prints the difference without writing. Applying requires a matching scripts.local_backup
+--dry-run prints the difference without writing. Applying requires a matching backup
 folder and runs in one transaction in which every other row and column stays identical; the
-revision of the touched tours is bumped so clients refresh.
+revision of the touched tours is bumped so clients refresh. The target is the local SQLite museum
+(--database) or the online PostgreSQL database (--database-url); see scripts.correction_target.
 """
 import argparse
 import json
@@ -14,11 +15,11 @@ import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.content_tables import CONTENT
-from app.db import Base, RoomRecord, TourRecord, make_session_factory, utc_now
+from app.db import Base, RoomRecord, TourRecord, utc_now
+from scripts import correction_target
 from scripts.correct_texts import DERIVED
 from scripts.evaluate_guide import external_file
-from scripts.local_backup import MANIFEST
-from scripts.update_credits import Decision, DryRun, matching_backup
+from scripts.update_credits import Decision, DryRun
 
 
 class RoomChange(BaseModel):
@@ -63,8 +64,8 @@ def snapshot(db) -> dict:
     return state
 
 
-def apply(database: Path, plan: RoomPlan, *, dry_run: bool, now=utc_now) -> dict:
-    factory = make_session_factory("sqlite:///" + database.as_posix())
+def apply(database: Path | str, plan: RoomPlan, *, dry_run: bool, now=utc_now) -> dict:
+    factory = correction_target.session_factory(database)
     changes, revisions = [], {}
     try:
         with factory.begin() as db:
@@ -94,25 +95,20 @@ def apply(database: Path, plan: RoomPlan, *, dry_run: bool, now=utc_now) -> dict
         pass
     finally:
         factory.kw["bind"].dispose()
-    return dict(schema_version=1, applied=not dry_run, database=str(database), decision=plan.decision.model_dump(mode="json"),
+    return dict(schema_version=1, applied=not dry_run, database=correction_target.label(database), decision=plan.decision.model_dump(mode="json"),
                 changes=changes, tour_revisions=revisions)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("plan")
-    parser.add_argument("--database", required=True)
-    parser.add_argument("--backup-folder", help=f"Folder holding {MANIFEST} for this exact database state")
-    parser.add_argument("--dry-run", action="store_true")
+    correction_target.add_arguments(parser)
     arguments = parser.parse_args()
     plan = RoomPlan.model_validate_json(external_file(arguments.plan).read_text(encoding="utf-8-sig"))
-    database = external_file(arguments.database)
-    if not arguments.dry_run:
-        if not arguments.backup_folder:
-            raise ValueError("Applying requires --backup-folder from scripts.local_backup")
-        matching_backup(database, Path(arguments.backup_folder).resolve(strict=True) / MANIFEST)
+    target = correction_target.selected(arguments)
+    correction_target.require_backup(arguments, target)
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-    print(json.dumps(apply(database, plan, dry_run=arguments.dry_run), ensure_ascii=False, indent=2))
+    print(json.dumps(apply(target, plan, dry_run=arguments.dry_run), ensure_ascii=False, indent=2))
     return 0
 
 

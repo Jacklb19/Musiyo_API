@@ -2,10 +2,12 @@
 
 The external plan names each element, the credits it currently shows, the reviewed replacement
 and, per resource, the expected and new credit text. --dry-run prints the difference without
-writing. Applying requires a backup manifest from scripts.local_backup that matches the selected
-database, runs in one transaction and refuses if authorizations, restrictions, sources or any
-other element change. Credits are display metadata: no grant or publication changes. They are
-part of each guide fragment's fingerprint, so the guide index of touched fichas is rebuilt.
+writing. Applying requires a backup folder that matches the selected database, runs in one
+transaction and refuses if authorizations, restrictions, sources or any other element change.
+Credits are display metadata: no grant or publication changes. They are part of each guide
+fragment's fingerprint, so the guide index of touched fichas is rebuilt, and fichas show them,
+so the revision of tours that show the fichas is bumped. The target is the local SQLite museum
+(--database) or the online PostgreSQL database (--database-url); see scripts.correction_target.
 """
 import argparse
 import json
@@ -18,9 +20,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.content_operations import reindex_in_session
 from app.content_tables import CONTENT
-from app.db import make_session_factory
+from app.db import utc_now
+from scripts import correction_target
 from scripts.evaluate_guide import external_file
-from scripts.local_backup import MANIFEST, summary
+from scripts.local_backup import summary
 
 CREDITS, RESOURCES, AUTHORIZATIONS = CONTENT["credits"], CONTENT["resources"], CONTENT["authorizations"]
 
@@ -92,9 +95,9 @@ class DryRun(Exception):
     """Leaves the transaction through rollback after the comparison."""
 
 
-def apply(database: Path, plan: CreditPlan, *, dry_run: bool) -> dict:
-    factory = make_session_factory("sqlite:///" + database.as_posix())
-    changes = []
+def apply(database: Path | str, plan: CreditPlan, *, dry_run: bool, now=utc_now) -> dict:
+    factory = correction_target.session_factory(database)
+    changes, revisions = [], {}
     try:
         with factory.begin() as db:
             before = guarded_state(db, plan)
@@ -127,14 +130,15 @@ def apply(database: Path, plan: CreditPlan, *, dry_run: bool) -> dict:
                         raise ValueError("Credits were not stored as planned")
                     # Stale fragments would be dropped at retrieval and the guide would abstain.
                     reindex_in_session(db, item.slug)
+                revisions = correction_target.bump_tours(db, {item.slug for item in plan.elements}, now())
             else:
                 raise DryRun()
     except DryRun:
         pass
     finally:
         factory.kw["bind"].dispose()
-    return dict(schema_version=1, applied=not dry_run, database=str(database), decision=plan.decision.model_dump(mode="json"),
-                changes=changes, unchanged="authorizations, restrictions, sources, blocks, elements, details, other credits and resource fields")
+    return dict(schema_version=1, applied=not dry_run, database=correction_target.label(database),
+                decision=plan.decision.model_dump(mode="json"), changes=changes, tour_revisions=revisions, unchanged="authorizations, restrictions, sources, blocks, elements, details, other credits and resource fields")
 
 
 def matching_backup(database: Path, manifest_path: Path):
@@ -149,18 +153,13 @@ def matching_backup(database: Path, manifest_path: Path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("plan")
-    parser.add_argument("--database", required=True)
-    parser.add_argument("--backup-folder", help=f"Folder holding {MANIFEST} for this exact database state")
-    parser.add_argument("--dry-run", action="store_true")
+    correction_target.add_arguments(parser)
     arguments = parser.parse_args()
     plan = CreditPlan.model_validate_json(external_file(arguments.plan).read_text(encoding="utf-8-sig"))
-    database = external_file(arguments.database)
-    if not arguments.dry_run:
-        if not arguments.backup_folder:
-            raise ValueError("Applying requires --backup-folder from scripts.local_backup")
-        matching_backup(database, Path(arguments.backup_folder).resolve(strict=True) / MANIFEST)
+    target = correction_target.selected(arguments)
+    correction_target.require_backup(arguments, target)
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-    print(json.dumps(apply(database, plan, dry_run=arguments.dry_run), ensure_ascii=False, indent=2))
+    print(json.dumps(apply(target, plan, dry_run=arguments.dry_run), ensure_ascii=False, indent=2))
     return 0
 
 
