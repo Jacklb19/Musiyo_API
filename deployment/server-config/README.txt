@@ -3,5 +3,5 @@ an external config folder next to the environment file; the container reads that
 Keys stay in a separate external secrets folder mounted at /run/secrets/musiyo (read-only):
   groq.key, elevenlabs.key — one line each, never inside a repository.
 guide.json: Groq answers with the extractive guide as fallback (same as the local session).
-voice.json: Groq Whisper + ElevenLabs. The Windows voices do not exist on Linux; Piper needs the Linux
-binary, which the image does not include yet, so without ElevenLabs credits the guide answers in text only.
+voice.json: Groq Whisper + ElevenLabs, with Piper (es_AR daniela, speed 1.30) as fallback. The image fetches
+Piper and the voice at build time, verified by SHA-256 (deployment/fetch_piper.py; MUSIYO_WITH_PIPER=0 skips it).

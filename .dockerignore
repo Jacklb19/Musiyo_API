@@ -8,3 +8,4 @@
 !alembic.ini
 !requirements.runtime.txt
 !scripts/transfer_museum.py
+!deployment/fetch_piper.py

@@ -3,6 +3,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY requirements.runtime.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.runtime.txt
+# Local fallback voice (Piper + es_AR daniela), fetched and verified at build time. Set MUSIYO_WITH_PIPER=0 to skip.
+ARG MUSIYO_WITH_PIPER=1
+COPY deployment/fetch_piper.py /tmp/fetch_piper.py
+RUN if [ "$MUSIYO_WITH_PIPER" = "1" ]; then python /tmp/fetch_piper.py /opt/musiyo-voice; fi && rm /tmp/fetch_piper.py
 COPY pyproject.toml README.md ./
 COPY app ./app
 COPY alembic.ini ./
