@@ -74,3 +74,18 @@ def test_start_refuses_unverified_or_insecure_archives(tmp_path, monkeypatch):
     assert fetch_content.main() == 1
     monkeypatch.delenv("MUSIYO_CONTENT_ARCHIVE_URL")
     assert fetch_content.main() == 0
+
+
+def test_archive_in_parts_is_joined_before_the_single_check(guide, tmp_path, monkeypatch):
+    report = package(guide[0], tmp_path / "private", tmp_path / "out/content.tar.gz", part_size=100)
+    parts = [Path(part).read_bytes() for part in report["parts"]]
+    assert len(parts) >= 2 and b"".join(parts) == Path(report["archive"]).read_bytes()
+    served = {f"https://storage.example/part{index}": data for index, data in enumerate(parts, start=1)}
+    monkeypatch.setattr(fetch_content.urllib.request, "urlopen", lambda request, timeout: Response(served[request.full_url]))
+    monkeypatch.setenv("MUSIYO_CONTENT_ARCHIVE_URL", " ".join(served) + "\n")
+    monkeypatch.setenv("MUSIYO_CONTENT_ARCHIVE_SHA256", report["sha256"])
+    monkeypatch.setenv("MUSIYO_STORAGE_ROOT", str(tmp_path / "storage"))
+    assert fetch_content.main() == 0 and any((tmp_path / "storage").rglob("*.*"))
+    monkeypatch.setenv("MUSIYO_CONTENT_ARCHIVE_URL", ",".join(reversed(list(served))))
+    monkeypatch.setenv("MUSIYO_STORAGE_ROOT", str(tmp_path / "other"))
+    assert fetch_content.main() == 1
