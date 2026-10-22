@@ -10,7 +10,12 @@ import sqlalchemy as sa
 from .content_tables import CONTENT
 from .db import utc_now
 from .guide_adapters import Embeddings, LocalHashEmbeddings
-from .guide_relevance import coverage, is_identity_question, question_terms
+from .guide_relevance import (
+    coverage,
+    is_identity_question,
+    matching_terms,
+    question_terms,
+)
 from .public_repository import ASSISTANT_ELEMENTS, PublicRepository
 
 
@@ -145,7 +150,9 @@ class GuideRepository:
             distance = table.c.embedding.op('<=>')(sa.cast(sa.literal(json.dumps(vector)), table.c.embedding.type))
             semantic = self.db.execute(base.where(table.c.embedding.is_not(None))
                                        .order_by(distance, table.c.id).limit(settings.candidate_limit)).mappings().all()
-            query = sa.func.websearch_to_tsquery(sa.literal_column("'public.spanish_unaccent'"), ' '.join(sorted(query_terms)))
+            # Any term may match; ts_rank_cd ranks fragments covering more terms first. Requiring every term
+            # (the websearch default) dropped the only fragment naming a rare word such as «Alguacero».
+            query = sa.func.websearch_to_tsquery(sa.literal_column("'public.spanish_unaccent'"), ' or '.join(sorted(query_terms)))
             lexical = self.db.execute(base.where(table.c.search_vector.bool_op('@@')(query))
                                       .order_by(sa.func.ts_rank_cd(table.c.search_vector, query).desc(), table.c.id)
                                       .limit(settings.candidate_limit)).mappings().all()
@@ -180,8 +187,13 @@ class GuideRepository:
                     if coverage(query_terms, item.text + ' ' + item.title) >= minimum_coverage
                     or not isinstance(embeddings, LocalHashEmbeddings)
                     and similarities[item.fragment_id] >= settings.minimum_similarity]
+        # Among candidates covering the same share of the question, a rarer term (a name such as «Alguacero»)
+        # identifies the topic better than a common one («cabildo»).
+        found = {item.fragment_id: matching_terms(query_terms, item.text + ' ' + item.title) for item in evidence}
+        frequency = {term: sum(term in terms for terms in found.values()) for term in query_terms}
+        rarity = {key: sum(1 / frequency[term] for term in terms) for key, terms in found.items()}
         if isinstance(embeddings, LocalHashEmbeddings):
-            evidence.sort(key=lambda item: (-coverage(query_terms, item.text + ' ' + item.title),
+            evidence.sort(key=lambda item: (-coverage(query_terms, item.text + ' ' + item.title), -rarity[item.fragment_id],
                                             -int(identity and item.kind == 'summary'),
                                             -coverage(query_terms, item.title) if identity else 0,
                                             len(question_terms(item.title)) if identity else 0,
