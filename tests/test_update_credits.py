@@ -6,6 +6,7 @@ import sqlalchemy as sa
 from test_guide import guide as guide
 
 from app.content_tables import CONTENT
+from app.guide_repository import index_status
 from scripts.local_backup import backup
 from scripts.update_credits import CreditPlan, apply, matching_backup
 
@@ -42,6 +43,9 @@ def test_dry_run_changes_nothing_and_apply_changes_only_credits(guide, tmp_path)
     after_credits, after_resource, after_grants = current(guide[1])
     assert after_credits == [("Pertenencia", "Colectiva sintética"), ("Creador", "Desconocido")]
     assert after_resource == "Captura sintética" and after_grants == grants
+    with guide[1]() as db:
+        # Credits are part of each fragment's fingerprint: the guide must still find this ficha.
+        assert index_status(db) == []
     with pytest.raises(ValueError):
         matching_backup(database, tmp_path / "snapshot" / "backup-manifest.json")
 

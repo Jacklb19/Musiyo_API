@@ -111,6 +111,28 @@ def index_evidence(db, element_id=None, now=utc_now, embeddings: Embeddings | No
     return count
 
 
+def index_status(db, now=utc_now, embeddings: Embeddings | None = None) -> list[dict]:
+    """Records whose guide fragments differ from what they currently publish, read-only.
+
+    A record edited after indexing (its text, sources or credits are part of each fingerprint)
+    keeps stale fragments that retrieval silently drops, so the guide abstains about it.
+    """
+    public = PublicRepository(db, now)
+    model = (embeddings or LocalHashEmbeddings()).model
+    table = CONTENT['index_fragments']
+    indexed: dict[str, set[str]] = {}
+    for row in db.execute(sa.select(table.c.element_id, table.c.text_hash).where(table.c.embedding_model == model)):
+        indexed.setdefault(row.element_id, set()).add(row.text_hash)
+    stale = []
+    for slug in sorted(set(db.scalars(sa.select(ASSISTANT_ELEMENTS.c.id))) | indexed.keys()):
+        record = public.element(slug)
+        expected = {item.text_hash for item in record_evidence(record)} if record else set()
+        if expected != indexed.get(slug, set()):
+            stale.append(dict(element=slug, indexed=len(indexed.get(slug, ())), current=len(expected & indexed.get(slug, set())),
+                              expected=len(expected)))
+    return stale
+
+
 class GuideRepository:
     def __init__(self, db, now=utc_now):
         self.db, self.now = db, now

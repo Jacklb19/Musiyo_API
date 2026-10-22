@@ -99,6 +99,7 @@ def main(argv=None):
     storage.add_argument("--web-origin", required=True)
     indexer = commands.add_parser("reindex")
     indexer.add_argument("--element")
+    indexer.add_argument("--check", action="store_true", help="Report stale guide fragments without writing")
     validator = commands.add_parser("create-validator")
     validator.add_argument("--username", required=True)
     validator.add_argument("--name", required=True)
@@ -134,7 +135,7 @@ def main(argv=None):
             S3Storage.from_environment().configure_cors(args.web_origin)
             result = {"configured": True}
         elif args.command == "reindex":
-            result = reindex(element_id=args.element)
+            result = reindex(element_id=args.element, check=args.check)
         elif args.command == "create-validator":
             password = getpass.getpass("Password: ")
             if password != getpass.getpass("Confirm password: "):

@@ -4,7 +4,8 @@ The external plan names each element, the credits it currently shows, the review
 and, per resource, the expected and new credit text. --dry-run prints the difference without
 writing. Applying requires a backup manifest from scripts.local_backup that matches the selected
 database, runs in one transaction and refuses if authorizations, restrictions, sources or any
-other element change. Credits are display metadata: no grant, publication or index changes.
+other element change. Credits are display metadata: no grant or publication changes. They are
+part of each guide fragment's fingerprint, so the guide index of touched fichas is rebuilt.
 """
 import argparse
 import json
@@ -15,6 +16,7 @@ from pathlib import Path
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.content_operations import reindex_in_session
 from app.content_tables import CONTENT
 from app.db import make_session_factory
 from scripts.evaluate_guide import external_file
@@ -123,6 +125,8 @@ def apply(database: Path, plan: CreditPlan, *, dry_run: bool) -> dict:
                 for item in plan.elements:
                     if element_credits(db, item.slug) != item.credits:
                         raise ValueError("Credits were not stored as planned")
+                    # Stale fragments would be dropped at retrieval and the guide would abstain.
+                    reindex_in_session(db, item.slug)
             else:
                 raise DryRun()
     except DryRun:

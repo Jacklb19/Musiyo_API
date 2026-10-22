@@ -111,6 +111,23 @@ def test_invalid_packages_cannot_create_public_content(tmp_path, error):
     assert not (tmp_path / "private").exists()
 
 
+def test_reindex_check_reports_stale_records_without_writing(tmp_path):
+    url, manifest, value = package_fixture(tmp_path)
+    import_package(manifest, url, private_storage=tmp_path / "private")
+    with make_session_factory(url).begin() as db:
+        db.execute(CONTENT["index_fragments"].delete())
+    check = reindex(url, check=True)
+    assert check["check"] and check["stale_records"] == [dict(element="synthetic-import", indexed=0, current=0, expected=1)]
+    assert export_state(url)["counts"]["index_fragments"] == 0
+    reindex(url)
+    with make_session_factory(url).begin() as db:
+        # A record edited after indexing changes the fingerprint; retrieval would drop the fragment.
+        db.execute(CONTENT["detail_blocks"].update().where(CONTENT["detail_blocks"].c.element_id == "synthetic-import").values(text="Otro texto"))
+    assert [item["element"] for item in reindex(url, check=True)["stale_records"]] == ["synthetic-import"]
+    reindex(url)
+    assert reindex(url, check=True)["stale_records"] == []
+
+
 def test_verify_validity_removes_expired_index_entries(tmp_path):
     url, manifest, value = package_fixture(tmp_path)
     import_package(manifest, url, private_storage=tmp_path / "private")
@@ -143,6 +160,8 @@ def test_cli_commands_operate_on_an_isolated_database(tmp_path, monkeypatch, cap
     capsys.readouterr()
     main(["reindex"])
     assert json.loads(capsys.readouterr().out)["indexed_fragments"] == 1
+    main(["reindex", "--check"])
+    assert json.loads(capsys.readouterr().out)["stale_records"] == []
     main(["verify-validity"])
     capsys.readouterr()
     output = tmp_path / "state.json"
