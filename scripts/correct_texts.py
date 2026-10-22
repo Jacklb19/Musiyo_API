@@ -3,9 +3,11 @@
 Each change names one element and either its description or one detail block (by order: its text,
 context or attribution), the exact current fragment and its replacement; the fragment must occur exactly once. The description
 is changed in element_details and, where it holds the same fragment, in elements. --dry-run prints
-the difference. Applying requires a matching scripts.local_backup folder and one transaction in
+the difference. Applying requires a matching backup folder and one transaction in
 which every other row and column stays identical; the guide index of touched records is rebuilt
-and the revision of tours that show them is bumped so clients refresh.
+and the revision of tours that show them is bumped so clients refresh. The target is the local
+SQLite museum (--database) or the online PostgreSQL database (--database-url); see
+scripts.correction_target.
 """
 import argparse
 import json
@@ -17,17 +19,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.content_operations import reindex_in_session
 from app.content_tables import CONTENT
-from app.db import (
-    PointElementRecord,
-    PointRecord,
-    RoomRecord,
-    TourRecord,
-    make_session_factory,
-    utc_now,
-)
+from app.db import utc_now
+from scripts import correction_target
 from scripts.evaluate_guide import external_file
-from scripts.local_backup import MANIFEST
-from scripts.update_credits import Decision, DryRun, matching_backup
+from scripts.update_credits import Decision, DryRun
 
 # Derived tables are rebuilt by triggers (element_search) or by reindex (index_fragments).
 DERIVED = ("index_fragments", "element_search", "tours", "alembic_version")
@@ -81,8 +76,8 @@ def replaced(text: str | None, change: TextChange, where: str) -> str:
     return text.replace(change.expected, change.replacement)
 
 
-def apply(database: Path, plan: TextPlan, *, dry_run: bool, now=utc_now) -> dict:
-    factory = make_session_factory("sqlite:///" + database.as_posix())
+def apply(database: Path | str, plan: TextPlan, *, dry_run: bool, now=utc_now) -> dict:
+    factory = correction_target.session_factory(database)
     changes, revisions = [], {}
     try:
         with factory.begin() as db:
@@ -123,14 +118,7 @@ def apply(database: Path, plan: TextPlan, *, dry_run: bool, now=utc_now) -> dict
                         db.execute(CONTENT[table].update().where(*[c == v for c, v in zip(primary, key)]).values(values))
             for slug in touched:
                 reindex_in_session(db, slug)
-            stamp = now()
-            keys = set(db.scalars(sa.select(RoomRecord.tour_id).join(PointRecord, PointRecord.room_id == RoomRecord.id)
-                                  .join(PointElementRecord, PointElementRecord.point_id == PointRecord.id)
-                                  .where(PointElementRecord.element_id.in_(touched))))
-            for key in sorted(keys):
-                tour = db.get(TourRecord, key)
-                tour.revision = stamp
-                revisions[key] = stamp.isoformat()
+            revisions = correction_target.bump_tours(db, touched, now())
             db.flush()
             after = rows(db)
             for table, columns in TEXT_TABLES.items():
@@ -144,25 +132,20 @@ def apply(database: Path, plan: TextPlan, *, dry_run: bool, now=utc_now) -> dict
         pass
     finally:
         factory.kw["bind"].dispose()
-    return dict(schema_version=1, applied=not dry_run, database=str(database), decision=plan.decision.model_dump(mode="json"),
+    return dict(schema_version=1, applied=not dry_run, database=correction_target.label(database), decision=plan.decision.model_dump(mode="json"),
                 changes=changes, tour_revisions=revisions)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("plan")
-    parser.add_argument("--database", required=True)
-    parser.add_argument("--backup-folder", help=f"Folder holding {MANIFEST} for this exact database state")
-    parser.add_argument("--dry-run", action="store_true")
+    correction_target.add_arguments(parser)
     arguments = parser.parse_args()
     plan = TextPlan.model_validate_json(external_file(arguments.plan).read_text(encoding="utf-8-sig"))
-    database = external_file(arguments.database)
-    if not arguments.dry_run:
-        if not arguments.backup_folder:
-            raise ValueError("Applying requires --backup-folder from scripts.local_backup")
-        matching_backup(database, Path(arguments.backup_folder).resolve(strict=True) / MANIFEST)
+    target = correction_target.selected(arguments)
+    correction_target.require_backup(arguments, target)
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-    print(json.dumps(apply(database, plan, dry_run=arguments.dry_run), ensure_ascii=False, indent=2))
+    print(json.dumps(apply(target, plan, dry_run=arguments.dry_run), ensure_ascii=False, indent=2))
     return 0
 
 

@@ -1,0 +1,41 @@
+BASE EN LÍNEA: CORRECCIONES Y COPIAS DE SEGURIDAD
+
+Cuándo aplica: desde que los validadores corrigen en la Web publicada, la base PostgreSQL de Supabase es la oficial.
+Ya no se vacía ni se vuelve a transferir desde el PC: se corrige allí mismo y se respalda cada semana. Los archivos
+privados (audios, modelos, subtítulos) siguen saliendo del paquete de contenido verificado que Render restaura.
+
+La conexión
+- Las herramientas leen la cadena de conexión de la variable MUSIYO_DATABASE_URL (en Git Bash:
+  `read -rs MUSIYO_DATABASE_URL && export MUSIYO_DATABASE_URL`). Así no queda en el historial ni en la pantalla.
+- Formato: la URI del «Session pooler» de Supabase con `postgresql+psycopg://` al inicio y la contraseña puesta.
+- En las salidas la contraseña aparece siempre como ***.
+
+Copia de seguridad (scripts.online_backup)
+- `backup --backup-folder CARPETA_NUEVA`: pg_dump del esquema public en formato custom más
+  online-backup-manifest.json (huella SHA-256 del volcado, versiones del servidor y de pg_dump, extensiones,
+  revisión del esquema, conteo exacto de filas y una huella del contenido de cada tabla). Si la base cambia mientras
+  se copia, se rechaza y hay que repetirla. La carpeta debe ser nueva y estar fuera de los repositorios.
+- pg_dump: el del PATH si su versión es al menos la del servidor; si no, dentro de Docker con una imagen de esa
+  versión (Supabase usa PostgreSQL 17: imagen public.ecr.aws/supabase/postgres:17.11.0.004, ya presente en el PC;
+  si falta, postgres:17-alpine). Docker Desktop debe estar abierto.
+- `verify --snapshot CARPETA`: vuelve a comprobar la huella del volcado.
+- `restore --snapshot CARPETA`: restaura en la base de MUSIYO_RESTORE_DATABASE_URL, que debe estar VACÍA (una base con
+  tablas se rechaza: la base en vivo nunca se sobrescribe). Crea las extensiones del manifiesto y compara revisión,
+  filas y huellas de cada tabla. La base de destino debe tener la misma versión mayor que la de origen (17).
+
+Correcciones (correct_texts, add_blocks, update_credits, update_room_texts)
+- Las mismas herramientas y planes que en local; en vez de `--database archivo.db` se usa `--database-url`
+  (sin valor: lee MUSIYO_DATABASE_URL).
+- Mismas garantías: comparar y reemplazar, una sola transacción con guarda que compara todas las demás filas,
+  --dry-run sin escribir, reconstrucción del índice del guía de las fichas tocadas y nueva revisión del recorrido
+  para que Web y Unity refresquen (update_credits también la sube desde el 22/10/2026).
+- Aplicar exige `--backup-folder` con una copia de scripts.online_backup que coincida con el estado actual (revisión,
+  filas y huellas de contenido). Los inicios de sesión de validadores no invalidan la copia; cualquier cambio de
+  contenido sí: tras cada corrección aplicada hay que hacer una copia nueva antes de la siguiente.
+- En línea la transacción usa REPEATABLE READ: la guarda lee una sola foto de la base, y si un validador guarda la
+  misma ficha a la vez, una de las dos operaciones falla y nada queda a medias.
+
+Ensayado el 22/10/2026 con PostgreSQL 16 + pgvector en Docker (contenedor musiyo-rehearsal-pg): copia, verificación y
+restauración con 5/5 comprobaciones, rechazo de destino no vacío y de volcado alterado; pg_dump 17 de la imagen de
+Supabase; correcciones por línea de comandos y pruebas automáticas tests/test_online_corrections.py
+(MUSIYO_TEST_POSTGRES_URL hacia una base musiyo_verify_*).
