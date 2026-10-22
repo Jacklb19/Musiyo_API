@@ -1,0 +1,38 @@
+# Render Blueprint for the Musiyo API (free web service, Docker). Secrets are never written here:
+# the owner fills the values marked sync: false and adds the Secret Files listed in
+# Api/deployment/render/README.txt (guide.json, voice.json, quiz.json, groq.key, elevenlabs.key,
+# validator-invitation.txt), which Render mounts read-only at /etc/secrets.
+services:
+  - type: web
+    name: musiyo-api
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/ready
+    envVars:
+      - key: MUSIYO_DATABASE_URL
+        sync: false
+      - key: MUSIYO_WEB_ORIGIN
+        sync: false
+      - key: MUSIYO_CONTENT_ARCHIVE_URL
+        sync: false
+      - key: MUSIYO_CONTENT_ARCHIVE_SHA256
+        sync: false
+      - key: MUSIYO_RESOURCE_SIGNING_KEY
+        generateValue: true
+      - key: MUSIYO_STORAGE_BACKEND
+        value: local
+      - key: MUSIYO_STORAGE_ROOT
+        value: /tmp/musiyo-storage
+      - key: MUSIYO_GUIDE_CONFIG
+        value: /etc/secrets/guide.json
+      - key: MUSIYO_VOICE_CONFIG
+        value: /etc/secrets/voice.json
+      - key: MUSIYO_QUIZ_BUNDLE
+        value: /etc/secrets/quiz.json
+      - key: MUSIYO_VALIDATOR_INVITATION_FILE
+        value: /etc/secrets/validator-invitation.txt
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"

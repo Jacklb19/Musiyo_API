@@ -9,3 +9,5 @@
 !requirements.runtime.txt
 !scripts/transfer_museum.py
 !deployment/fetch_piper.py
+!deployment/fetch_content.py
+!deployment/start.sh

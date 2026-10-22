@@ -1,0 +1,12 @@
+{
+ "transcription": "groq",
+ "synthesis": "elevenlabs",
+ "synthesis_fallback": ["piper"],
+ "groq_api_key_file": "/etc/secrets/groq.key",
+ "elevenlabs_api_key_file": "/etc/secrets/elevenlabs.key",
+ "elevenlabs_voice_id": "EXAVITQu4vr4xnSDxMaL",
+ "elevenlabs_model_id": "eleven_multilingual_v2",
+ "piper_executable": "/opt/musiyo-voice/piper/piper",
+ "piper_model": "/opt/musiyo-voice/voices/es_AR-daniela-high.onnx",
+ "piper_length_scale": 1.3
+}
