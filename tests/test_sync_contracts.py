@@ -1,3 +1,4 @@
+import hashlib
 import subprocess
 import sys
 from pathlib import Path
@@ -18,4 +19,9 @@ def test_explicit_destinations_are_required_and_all_are_validated_first(tmp_path
     assert run('--target', 'web', '--web', str(web)).returncode == 0
     assert (web / 'contracts/source.sha256').is_file()
     for source in (ROOT / 'contracts').rglob('*.json'):
-        assert source.read_bytes() == (web / 'contracts' / source.relative_to(ROOT / 'contracts')).read_bytes()
+        copy = (web / 'contracts' / source.relative_to(ROOT / 'contracts')).read_bytes()
+        # Copies are LF even from a Windows checkout with CRLF, so their recorded hashes hold everywhere.
+        assert copy == source.read_bytes().replace(b'\r\n', b'\n') and b'\r\n' not in copy
+    for line in (web / 'contracts/source.sha256').read_text(encoding='utf-8').splitlines():
+        digest, name = line.split('  ')
+        assert hashlib.sha256((web / 'contracts' / name).read_bytes()).hexdigest() == digest

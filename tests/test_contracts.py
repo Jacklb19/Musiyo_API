@@ -171,3 +171,11 @@ def test_museum_credits_contract_is_canonical_and_versioned():
     for mutation in ({"schema_version": 2}, {"sections": [{"key": "other", "title": "x", "lines": []}]}):
         with pytest.raises(ValidationError):
             MuseumCredits.model_validate_json(json.dumps(example | mutation))
+
+
+def test_survey_examples_follow_their_models():
+    from app.survey_contracts import GuideSurvey, GuideSurveyResponse, GuideSurveyStored
+    for model, name in ((GuideSurvey, "guide_survey"), (GuideSurveyResponse, "guide_survey_response"),
+                        (GuideSurveyStored, "guide_survey_stored")):
+        example = read_json(CONTRACTS / "examples" / f"{name}.json")
+        assert model.model_validate(example).model_dump(mode="json") == example

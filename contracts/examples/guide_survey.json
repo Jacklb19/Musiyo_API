@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "survey_key": "synthetic-closing",
+  "version": "v1",
+  "tour_key": "test-tour",
+  "notice": {
+    "intro": "¿Me cuentas cómo te fue?",
+    "accept_label": "Claro, te cuento",
+    "local_label": "Te cuento, pero no lo guardes",
+    "decline_label": "Ahora no",
+    "more_label": "¿Para qué es esto?",
+    "title": "¿Para qué es esto?",
+    "text": "Respuestas anónimas de ejemplo para pruebas."
+  },
+  "questions": [
+    {
+      "id": "liked",
+      "kind": "single_choice",
+      "text": "¿Te gustó la visita?",
+      "options": [
+        {
+          "id": "a-lot",
+          "text": "Mucho"
+        },
+        {
+          "id": "a-little",
+          "text": "Poco"
+        }
+      ],
+      "reply": "Gracias por contarme.",
+      "optional": false
+    },
+    {
+      "id": "noticed",
+      "kind": "single_choice",
+      "text": "¿Qué te llamó la atención?",
+      "options": [
+        {
+          "id": "masks",
+          "text": "Las máscaras"
+        },
+        {
+          "id": "music",
+          "text": "La música"
+        },
+        {
+          "id": "other",
+          "text": "Otra cosa"
+        }
+      ],
+      "reply": null,
+      "optional": true
+    }
+  ],
+  "closing": "Gracias por la charla."
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "survey_key": "synthetic-closing",
+  "version": "v1",
+  "platform": "web",
+  "answers": [
+    {
+      "question_id": "liked",
+      "option_id": "a-lot"
+    }
+  ]
+}

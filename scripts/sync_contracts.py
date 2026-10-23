@@ -1,7 +1,6 @@
 """Copy canonical API contracts to explicitly selected existing client checkouts."""
 import argparse
 import hashlib
-import shutil
 from pathlib import Path
 
 from scripts.generate_unity_contracts import generate
@@ -32,14 +31,17 @@ def main():
     files = sorted(path for path in SOURCE.rglob('*.json') if path.is_file())
     if not files:
         parser.error('No generated contracts found. Run scripts.build_contracts first.')
-    manifest = ''.join(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(SOURCE).as_posix()}\n' for path in files)
+    # Contracts are JSON text kept with LF in every repository; a Windows checkout may hold CRLF, so the
+    # copies and their hashes always use LF and match on every platform.
+    contents = {path: path.read_bytes().replace(b'\r\n', b'\n') for path in files}
+    manifest = ''.join(f'{hashlib.sha256(contents[path]).hexdigest()}  {path.relative_to(SOURCE).as_posix()}\n' for path in files)
     # Validate every destination and generate models before writing any client.
     unity_code = generate() if 'unity' in targets else None
     for name, target in targets.items():
         for source in files:
             destination = target / source.relative_to(SOURCE)
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, destination)
+            destination.write_bytes(contents[source])
         (target / 'source.sha256').write_text(manifest, encoding='utf-8', newline='\n')
         if name == 'unity':
             (target.parent / 'Scripts/Museo/PublicContractModelsV1.cs').write_text(unity_code, encoding='utf-8', newline='\n')
