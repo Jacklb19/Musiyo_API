@@ -11,3 +11,4 @@
 !deployment/fetch_piper.py
 !deployment/fetch_content.py
 !deployment/start.sh
+!deployment/survey/**
