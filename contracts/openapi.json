@@ -2010,6 +2010,245 @@
         }
       }
     },
+    "/api/v1/guide/survey": {
+      "get": {
+        "summary": "Survey",
+        "operationId": "survey_api_v1_guide_survey_get",
+        "parameters": [
+          {
+            "name": "tour_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tour Key"
+            }
+          },
+          {
+            "name": "schema_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Schema Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuideSurvey"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/guide/survey/responses": {
+      "post": {
+        "summary": "Store",
+        "operationId": "store_api_v1_guide_survey_responses_post",
+        "parameters": [
+          {
+            "name": "X-Musiyo-Survey-Consent",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musiyo-Survey-Consent"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuideSurveyResponse"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuideSurveyStored"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/auth/session": {
       "get": {
         "summary": "Session",
@@ -3443,6 +3682,137 @@
         ],
         "title": "GuideSpeech"
       },
+      "GuideSurvey": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "survey_key": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Survey Key"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Version"
+          },
+          "tour_key": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Tour Key"
+          },
+          "notice": {
+            "$ref": "#/components/schemas/SurveyNotice"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/SurveyQuestion"
+            },
+            "type": "array",
+            "maxItems": 15,
+            "minItems": 1,
+            "title": "Questions"
+          },
+          "closing": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Closing"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "survey_key",
+          "version",
+          "tour_key",
+          "notice",
+          "questions",
+          "closing"
+        ],
+        "title": "GuideSurvey"
+      },
+      "GuideSurveyResponse": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version"
+          },
+          "survey_key": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Survey Key"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Version"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "quest",
+                  "web",
+                  "desktop"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/SurveyAnswer"
+            },
+            "type": "array",
+            "maxItems": 15,
+            "minItems": 1,
+            "title": "Answers"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "survey_key",
+          "version",
+          "answers"
+        ],
+        "title": "GuideSurveyResponse"
+      },
+      "GuideSurveyStored": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "status": {
+            "type": "string",
+            "const": "stored",
+            "title": "Status",
+            "default": "stored"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GuideSurveyStored"
+      },
       "GuideTranscription": {
         "properties": {
           "schema_version": {
@@ -4216,6 +4586,166 @@
           "reference"
         ],
         "title": "Source"
+      },
+      "SurveyAnswer": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Question Id"
+          },
+          "option_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Option Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "option_id"
+        ],
+        "title": "SurveyAnswer"
+      },
+      "SurveyNotice": {
+        "properties": {
+          "intro": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Intro"
+          },
+          "accept_label": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Accept Label"
+          },
+          "local_label": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Local Label"
+          },
+          "decline_label": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Decline Label"
+          },
+          "more_label": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "More Label"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "intro",
+          "accept_label",
+          "local_label",
+          "decline_label",
+          "more_label",
+          "title",
+          "text"
+        ],
+        "title": "SurveyNotice"
+      },
+      "SurveyOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "SurveyOption"
+      },
+      "SurveyQuestion": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "single_choice",
+            "title": "Kind",
+            "default": "single_choice"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/SurveyOption"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 2,
+            "title": "Options"
+          },
+          "reply": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply"
+          },
+          "optional": {
+            "type": "boolean",
+            "title": "Optional",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "options"
+        ],
+        "title": "SurveyQuestion"
       },
       "TextBlock": {
         "properties": {

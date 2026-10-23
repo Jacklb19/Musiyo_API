@@ -21,6 +21,7 @@ from app.guide_contracts import GuideQuestion, GuideResponse
 from app.main import Tour, app
 from app.museum_credits import MuseumCredits
 from app.quiz_contracts import GuideQuiz, GuideQuizAnswer, GuideQuizAnswerResult
+from app.survey_contracts import GuideSurvey, GuideSurveyResponse, GuideSurveyStored
 from app.voice_contracts import GuideTranscription, GuideVoiceAnswer, VoiceCapabilities
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,6 +64,9 @@ def main() -> None:
     write_json(CONTRACTS / "resource-access.v1.schema.json", ResourceAccess.model_json_schema())
     write_json(CONTRACTS / "validator-session.v1.schema.json", ValidatorSession.model_json_schema())
     write_json(CONTRACTS / "museum-credits.v1.schema.json", MuseumCredits.model_json_schema())
+    write_json(CONTRACTS / "guide-survey.v1.schema.json", GuideSurvey.model_json_schema())
+    write_json(CONTRACTS / "guide-survey-response.v1.schema.json", GuideSurveyResponse.model_json_schema())
+    write_json(CONTRACTS / "guide-survey-stored.v1.schema.json", GuideSurveyStored.model_json_schema())
 
 
 if __name__ == "__main__":

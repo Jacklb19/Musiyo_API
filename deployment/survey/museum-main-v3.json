@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "survey_key": "conversacion-final",
+  "version": "v3",
+  "tour_key": "museum-main",
+  "notice": {
+    "intro": "Antes de que sigas tu camino, ¿me cuentas cómo te fue? Son unas pocas preguntas y no guardamos quién eres.",
+    "accept_label": "Claro, te cuento",
+    "local_label": "Te cuento, pero no lo guardes",
+    "decline_label": "Ahora no",
+    "more_label": "¿Para qué es esto?",
+    "title": "¿Para qué es esto?",
+    "text": "Estas preguntas son parte del trabajo de grado Musiyo Bëtsknaté de la Universidad Cooperativa de Colombia, campus Pasto. Sirven para saber si el museo es fácil de usar y si se entiende lo que cuenta. Tus respuestas son anónimas: no guardamos tu nombre, tu voz, tu ubicación ni datos de tu dispositivo, solo las opciones que elijas, el día y si visitaste desde el visor o desde la web. Puedes responder sin que se guarde nada, o no responder."
+  },
+  "questions": [
+    {
+      "id": "gusto",
+      "text": "Para empezar, ¿te gustó tu visita?",
+      "reply": "Gracias por contarme.",
+      "options": [
+        {"id": "mucho", "text": "Mucho"},
+        {"id": "bastante", "text": "Bastante"},
+        {"id": "mas-o-menos", "text": "Más o menos"},
+        {"id": "poco", "text": "Poco"},
+        {"id": "nada", "text": "Nada"}
+      ]
+    },
+    {
+      "id": "encontrar",
+      "text": "¿Pudiste encontrar lo que buscabas por el camino?",
+      "reply": "Entiendo.",
+      "options": [
+        {"id": "siempre", "text": "Sí, siempre"},
+        {"id": "casi-siempre", "text": "Casi siempre"},
+        {"id": "pocas-veces", "text": "Pocas veces"},
+        {"id": "no", "text": "No"}
+      ]
+    },
+    {
+      "id": "atencion",
+      "text": "¿Qué fue lo que más te llamó la atención?",
+      "reply": "Qué bueno saberlo.",
+      "optional": true,
+      "options": [
+        {"id": "mascaras", "text": "Las máscaras"},
+        {"id": "musica", "text": "La música y los instrumentos"},
+        {"id": "relatos", "text": "Los relatos"},
+        {"id": "castillo", "text": "El Castillo"},
+        {"id": "guias", "text": "El colibrí y el ovillito"},
+        {"id": "otra", "text": "Otra cosa"}
+      ]
+    },
+    {
+      "id": "claridad",
+      "text": "Lo que te contamos de cada pieza, ¿se entendía bien?",
+      "reply": "Gracias por contarme.",
+      "options": [
+        {"id": "muy-bien", "text": "Muy bien"},
+        {"id": "bien", "text": "Bien"},
+        {"id": "mas-o-menos", "text": "Más o menos"},
+        {"id": "poco", "text": "Poco"},
+        {"id": "nada", "text": "Nada"}
+      ]
+    },
+    {
+      "id": "moverse",
+      "text": "¿Y moverte por el museo? ¿Cómo te fue con eso?",
+      "reply": "Entiendo.",
+      "options": [
+        {"id": "muy-facil", "text": "Muy fácil"},
+        {"id": "facil", "text": "Fácil"},
+        {"id": "regular", "text": "Regular"},
+        {"id": "dificil", "text": "Difícil"},
+        {"id": "muy-dificil", "text": "Muy difícil"}
+      ]
+    },
+    {
+      "id": "dificultad",
+      "text": "¿Hubo algo que te costara un poco?",
+      "reply": "Gracias por contarme.",
+      "options": [
+        {"id": "nada", "text": "Nada"},
+        {"id": "moverme", "text": "Moverme o girar"},
+        {"id": "leer", "text": "Leer las fichas"},
+        {"id": "colibri", "text": "Hablar con el colibrí"},
+        {"id": "sonido", "text": "Escuchar el sonido"},
+        {"id": "otra", "text": "Otra cosa"}
+      ]
+    },
+    {
+      "id": "colibri",
+      "text": "¿Y el colibrí? ¿Te ayudó cuando le preguntaste algo?",
+      "reply": "Qué bueno saberlo.",
+      "options": [
+        {"id": "si", "text": "Sí"},
+        {"id": "en-parte", "text": "En parte"},
+        {"id": "no", "text": "No"},
+        {"id": "no-pregunte", "text": "No le pregunté"}
+      ]
+    },
+    {
+      "id": "recomendar",
+      "text": "¿Le recomendarías esta visita a alguien?",
+      "reply": "Gracias por contarme.",
+      "options": [
+        {"id": "si", "text": "Sí"},
+        {"id": "tal-vez", "text": "Tal vez"},
+        {"id": "no", "text": "No"}
+      ]
+    },
+    {
+      "id": "saber-mas",
+      "text": "Y la última: ¿te gustaría saber más del Bëtscnaté y de los pueblos Kamëntsá e Inga?",
+      "options": [
+        {"id": "si", "text": "Sí"},
+        {"id": "tal-vez", "text": "Tal vez"},
+        {"id": "no", "text": "No"}
+      ]
+    }
+  ],
+  "closing": "Gracias por la charla. El fuego sigue encendido: puedes quedarte un rato o seguir hacia el mirador."
+}

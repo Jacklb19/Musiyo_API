@@ -26,7 +26,7 @@ def main():
         return
     with sqlite3.connect(args.path.resolve().as_uri() + '?mode=ro', uri=True) as db:
         db.create_function('musiyo_now', 0, lambda: datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S.%f'))
-        if db.execute('select version_num from alembic_version').fetchone() != ('0005',):
+        if db.execute('select version_num from alembic_version').fetchone() not in (('0005',), ('0006',)):
             raise ValueError('Selected database needs an explicit migration')
         print(json.dumps(sorted(row[0] for row in db.execute('select id from v_current_elements'))))
 

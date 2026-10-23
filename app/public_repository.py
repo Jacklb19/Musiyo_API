@@ -49,7 +49,8 @@ class PublicRepository:
     def ready(self) -> bool:
         revision = self.db.scalar(sa.text("SELECT version_num FROM alembic_version"))
         self.db.execute(sa.text("SELECT id FROM v_assistant_elements LIMIT 0"))
-        return revision == "0005"
+        # 0006 only adds the anonymous survey table; the public read model is the same.
+        return revision in ("0005", "0006")
 
     def facets(self, name: str) -> list[CatalogFacet]:
         term = CONTENT[name]
