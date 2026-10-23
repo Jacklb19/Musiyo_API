@@ -23,7 +23,7 @@ Copia de seguridad (scripts.online_backup)
   tablas se rechaza: la base en vivo nunca se sobrescribe). Crea las extensiones del manifiesto y compara revisión,
   filas y huellas de cada tabla. La base de destino debe tener la misma versión mayor que la de origen (17).
 
-Correcciones (correct_texts, add_blocks, update_credits, update_room_texts)
+Correcciones (correct_texts, add_blocks, update_credits, update_room_texts, update_resource_provenance)
 - Las mismas herramientas y planes que en local; en vez de `--database archivo.db` se usa `--database-url`
   (sin valor: lee MUSIYO_DATABASE_URL).
 - Mismas garantías: comparar y reemplazar, una sola transacción con guarda que compara todas las demás filas,
@@ -39,3 +39,9 @@ Ensayado el 22/10/2026 con PostgreSQL 16 + pgvector en Docker (contenedor musiyo
 restauración con 5/5 comprobaciones, rechazo de destino no vacío y de volcado alterado; pg_dump 17 de la imagen de
 Supabase; correcciones por línea de comandos y pruebas automáticas tests/test_online_corrections.py
 (MUSIYO_TEST_POSTGRES_URL hacia una base musiyo_verify_*).
+
+update_resource_provenance (23/10/2026): cambia la procedencia pública de recursos (comparar y reemplazar el texto
+entero, o null para no mostrar ninguna). El texto anterior se guarda en paradata.internal_notes, que no se publica. Primer
+uso: limpieza de notas internas de trabajo (nombres de .md, SHA256, Blender) en 53 recursos; aplicada en el museo local
+con copia previa (preview/backups/museum-before-provenance-cleanup-20261023). Plan y generador en
+Desktop/musiyo_respaldos_en_linea/planes/.
