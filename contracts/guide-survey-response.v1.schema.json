@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "SurveyAnswer": {
+      "additionalProperties": false,
+      "properties": {
+        "question_id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Question Id",
+          "type": "string"
+        },
+        "option_id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Option Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question_id",
+        "option_id"
+      ],
+      "title": "SurveyAnswer",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "survey_key": {
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Survey Key",
+      "type": "string"
+    },
+    "version": {
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Version",
+      "type": "string"
+    },
+    "platform": {
+      "anyOf": [
+        {
+          "enum": [
+            "quest",
+            "web",
+            "desktop"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Platform"
+    },
+    "answers": {
+      "items": {
+        "$ref": "#/$defs/SurveyAnswer"
+      },
+      "maxItems": 15,
+      "minItems": 1,
+      "title": "Answers",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "survey_key",
+    "version",
+    "answers"
+  ],
+  "title": "GuideSurveyResponse",
+  "type": "object"
+}

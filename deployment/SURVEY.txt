@@ -1,0 +1,28 @@
+CONVERSACIÓN FINAL: PREGUNTAS DE OPINIÓN ANÓNIMAS (decisión D6 del propietario, 22-23/10/2026)
+
+Qué es
+- Al final de la entrevista del Fogón, el ovillito propone 9 preguntas de opción (versión v3, aprobada el 23/10/2026).
+  Mezcla preguntas cálidas («¿te gustó?», «¿lo recomendarías?») con las de la tesis: encontrar, claridad, facilidad de
+  uso, dificultades, guía de IA y difusión. Justificación: Musiyo_Bëtsknaté/PREGUNTAS_OPINION_Y_AVISO_20261022.md.
+- Textos: deployment/survey/museum-main-v3.json, que va dentro de la imagen. Otro archivo: MUSIYO_SURVEY_BUNDLE=<ruta>.
+  MUSIYO_SURVEY_BUNDLE vacío = sin conversación.
+
+Contrato (aditivo v1)
+- GET  /api/v1/guide/survey?tour_key=museum-main&schema_version=1 → GuideSurvey: aviso con tres botones (guardar /
+  responder sin guardar / ahora no), preguntas, frase breve tras cada respuesta y cierre. 404 = no hay preguntas.
+- POST /api/v1/guide/survey/responses con la cabecera X-Musiyo-Survey-Consent: anonymous-v1 → 201 {"status":"stored"}.
+  Sin la cabecera: 403. Opción o pregunta desconocida, versión cambiada, texto libre o pregunta repetida: 422.
+  Tabla aún no creada: 503. Límite compartido con el guía: 429 + Retry-After.
+- Si el visitante elige «Te cuento, pero no lo guardes», el cliente NO hace el POST.
+
+Qué se guarda: id al azar, survey_key, version, el DÍA (sin hora), plataforma (quest/web/desktop) y las opciones.
+No se guarda: hora, IP, nombre, voz, dispositivo ni texto libre.
+
+Base de datos
+- Migración 0006 (tabla survey_responses). La API funciona con 0005 o 0006: se despliega primero el código y después
+  se migra. Mientras no se migre, las preguntas se muestran pero guardar responde 503.
+- Las copias en línea (scripts.online_backup) no exigen que coincidan estas filas, igual que los inicios de sesión.
+
+Exportar para la tesis
+  .venv/Scripts/python.exe -m scripts.export_survey --database-url --output-folder <carpeta nueva fuera de los repos>
+  → respuestas.csv (una fila por conversación) y totales.csv (por pregunta, opción y plataforma, en el orden ofrecido).

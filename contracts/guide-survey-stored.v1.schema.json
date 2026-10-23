@@ -1,0 +1,19 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "status": {
+      "const": "stored",
+      "default": "stored",
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "title": "GuideSurveyStored",
+  "type": "object"
+}

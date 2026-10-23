@@ -14,6 +14,7 @@ COPY migrations ./migrations
 COPY fixtures ./fixtures
 COPY scripts/transfer_museum.py ./scripts/transfer_museum.py
 COPY deployment/fetch_content.py deployment/start.sh ./deployment/
+COPY deployment/survey ./deployment/survey
 RUN pip install --no-cache-dir --no-deps -e . && useradd --uid 10001 --create-home musiyo
 USER musiyo
 # Restores content on hosts that wipe the disk (MUSIYO_CONTENT_ARCHIVE_URL), then listens on $PORT (8000 by default).

@@ -1,0 +1,197 @@
+{
+  "$defs": {
+    "SurveyNotice": {
+      "additionalProperties": false,
+      "properties": {
+        "intro": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Intro",
+          "type": "string"
+        },
+        "accept_label": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Accept Label",
+          "type": "string"
+        },
+        "local_label": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Local Label",
+          "type": "string"
+        },
+        "decline_label": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Decline Label",
+          "type": "string"
+        },
+        "more_label": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "More Label",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 1200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "intro",
+        "accept_label",
+        "local_label",
+        "decline_label",
+        "more_label",
+        "title",
+        "text"
+      ],
+      "title": "SurveyNotice",
+      "type": "object"
+    },
+    "SurveyOption": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "SurveyOption",
+      "type": "object"
+    },
+    "SurveyQuestion": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "single_choice",
+          "default": "single_choice",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/SurveyOption"
+          },
+          "maxItems": 8,
+          "minItems": 2,
+          "title": "Options",
+          "type": "array"
+        },
+        "reply": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reply"
+        },
+        "optional": {
+          "default": false,
+          "title": "Optional",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "options"
+      ],
+      "title": "SurveyQuestion",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "survey_key": {
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Survey Key",
+      "type": "string"
+    },
+    "version": {
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Version",
+      "type": "string"
+    },
+    "tour_key": {
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Tour Key",
+      "type": "string"
+    },
+    "notice": {
+      "$ref": "#/$defs/SurveyNotice"
+    },
+    "questions": {
+      "items": {
+        "$ref": "#/$defs/SurveyQuestion"
+      },
+      "maxItems": 15,
+      "minItems": 1,
+      "title": "Questions",
+      "type": "array"
+    },
+    "closing": {
+      "maxLength": 400,
+      "minLength": 1,
+      "title": "Closing",
+      "type": "string"
+    }
+  },
+  "required": [
+    "survey_key",
+    "version",
+    "tour_key",
+    "notice",
+    "questions",
+    "closing"
+  ],
+  "title": "GuideSurvey",
+  "type": "object"
+}

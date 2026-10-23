@@ -31,9 +31,9 @@ from scripts.local_backup import digest, new_external_folder
 DUMP = "museum.dump"
 MANIFEST = "online-backup-manifest.json"
 KIND = "musiyo-online-postgres"
-# Rows a visitor creates by signing in; they change between a backup and a correction without
+# Rows visitors create by signing in or answering the closing survey; they change between a backup and a correction without
 # touching content, so they are recorded but not required to match.
-EPHEMERAL = ("validator_sessions", "validator_login_attempts")
+EPHEMERAL = ("validator_sessions", "validator_login_attempts", "survey_responses")
 # Images already used by this project; any other major falls back to the official image.
 IMAGES = {16: "pgvector/pgvector:0.8.0-pg16", 17: "public.ecr.aws/supabase/postgres:17.11.0.004"}
 

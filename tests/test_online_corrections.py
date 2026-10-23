@@ -175,7 +175,7 @@ def test_database_url_without_a_value_comes_from_the_environment(monkeypatch):
 def test_backup_restores_into_an_empty_database_only(online, tmp_path):
     url, factory, spare = online
     manifest = online_backup.backup(url, tmp_path / "weekly")
-    assert manifest["dump"]["bytes"] > 0 and manifest["database"]["revision"] == "0005"
+    assert manifest["dump"]["bytes"] > 0 and manifest["database"]["revision"] == "0006"
     assert make_url(url).password not in (tmp_path / "weekly" / online_backup.MANIFEST).read_text(encoding="utf-8")
     report = online_backup.restore(tmp_path / "weekly", spare)
     assert report["passed"] and report["differing_tables"] == []
@@ -185,3 +185,19 @@ def test_backup_restores_into_an_empty_database_only(online, tmp_path):
     (tmp_path / "weekly" / online_backup.DUMP).write_bytes(b"tampered")
     with pytest.raises(ValueError, match="does not match"):
         online_backup.restore(tmp_path / "weekly", spare)
+
+
+def test_survey_answers_are_stored_and_exported_online(online, tmp_path):
+    from datetime import datetime, timezone
+
+    from app.survey_contracts import GuideSurvey, GuideSurveyResponse
+    from app.survey_service import DEFAULT_BUNDLE, SurveyService
+    from scripts.export_survey import export
+    url, factory, _ = online
+    service = SurveyService(factory, DEFAULT_BUNDLE, lambda: datetime(2026, 10, 23, 9, tzinfo=timezone.utc))
+    service.store(GuideSurveyResponse.model_validate(dict(schema_version=1, survey_key="conversacion-final", version="v3",
+        platform="web", answers=[dict(question_id="gusto", option_id="mucho"), dict(question_id="colibri", option_id="si")])))
+    survey = GuideSurvey.model_validate(json.loads(DEFAULT_BUNDLE.read_text(encoding="utf-8")))
+    result = export(url, survey, tmp_path / "export")
+    assert result["conversations"] == 1 and result["platforms"] == ["web"]
+    assert "2026-10-23,web,v3,mucho" in (tmp_path / "export" / "respuestas.csv").read_text(encoding="utf-8-sig")
