@@ -9,12 +9,15 @@ from app.guide_conversation import split_courtesy, suggestions, topics_text
 from app.guide_service import GuideService
 
 TITLES = {"matachin": "El Matachín", "matachin-mask": "Máscara del Matachín", "flauta": "La flauta",
+          "atun-puncha": "Atun Puncha, el Día Grande Inga",
           "sanjuanes": "Los Sanjuanes", "creditos-del-museo": "Créditos y fuentes del museo", "bombo": "El bombo"}
 
 
 @pytest.mark.parametrize("question, greeted, core", [
-    ("Hola, ¿qué tal? ¿Cómo estás? ¿Podrías contar acerca del museo?", True, "Podrías contar acerca del museo?"),
-    ("hola, me podrías explicar de qué trata el museo", True, "me podrías explicar de qué trata el museo?"),
+    ("Hola, ¿qué tal? ¿Cómo estás? ¿Podrías contar acerca del museo?", True, "¿De qué trata el museo?"),
+    ("hola, me podrías explicar de qué trata el museo", True, "¿De qué trata el museo?"),
+    ("¿Qué voy a encontrar aquí?", False, "¿De qué trata el museo?"),
+    ("¿Quién hizo las máscaras del museo?", False, "Quién hizo las máscaras del museo?"),
     ("Buenas tardes. ¿Qué es el bombo?", True, "Qué es el bombo?"),
     ("¿Qué es el bombo? Gracias", False, "Qué es el bombo?"),
     ("Hola, ¿cómo estás?", True, ""),
@@ -28,7 +31,7 @@ def test_courtesy_is_split_from_the_question(question, greeted, core):
 def test_suggestions_leave_out_pieces_and_credits_and_read_naturally():
     slugs = suggestions(TITLES, "seed")
     assert len(slugs) == 3 and len(set(slugs)) == 3
-    assert not {"matachin-mask", "creditos-del-museo"} & set(slugs)
+    assert not {"matachin-mask", "creditos-del-museo", "atun-puncha"} & set(slugs)
     assert topics_text(["matachin", "flauta", "bombo"], TITLES) == "el Matachín, la flauta o el bombo"
 
 

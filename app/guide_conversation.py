@@ -22,6 +22,12 @@ SEGMENT = re.compile(r"[^.?!]+[.?!]*")
 WELCOME = "¡Hola! Soy tu guía en el museo. Pregúntame lo que quieras sobre el Bëtsknaté; por ejemplo, sobre {topics}."
 REDIRECT = "Eso no lo encuentro en las fichas del museo, y prefiero no inventarlo. Puedo contarte sobre {topics}."
 GREETING_PREFIX = "¡Hola! "
+# «¿Podrías contar acerca del museo?» finds nothing while «¿De qué trata el museo?» finds the museum's own
+# summary, so general questions about the museum are asked in that form.
+MUSEUM_OVERVIEW = "¿De qué trata el museo?"
+ABOUT_MUSEUM = re.compile(r"\b(?:acerca|sobre)\s+(?:de\s+)?(?:este\s+|el\s+|del\s+)?museo\b|\bqu[eé] (?:es|hay en|tiene) (?:este|el) museo\b"
+                          r"|\bde qu[eé] (?:se )?trata (?:este|el) museo\b|\bqu[eé] (?:voy a|puedo) (?:ver|encontrar)\b",
+                          re.IGNORECASE)
 
 
 def split_courtesy(question: str) -> tuple[bool, str]:
@@ -36,13 +42,18 @@ def split_courtesy(question: str) -> tuple[bool, str]:
     core = " ".join(kept).strip()
     if core and not core.endswith(("?", ".", "!")):
         core += "?"
+    if ABOUT_MUSEUM.search(core):
+        core = MUSEUM_OVERVIEW
     return greeted, core
 
 
 def suggestions(titles: dict[str, str], seed: str, count: int = 3) -> list[str]:
     """Three current records to offer, varied by question; pieces and the credits record are left out."""
-    pool = sorted(slug for slug, title in titles.items()
-                  if not title.lower().startswith("máscara") and "crédito" not in title.lower())
+    eligible = [slug for slug, title in titles.items()
+                if not title.lower().startswith("máscara") and "crédito" not in title.lower()]
+    # Short titles read well in a spoken list; «Atun Puncha, el Día Grande Inga» would split into two topics.
+    short = [slug for slug in eligible if "," not in titles[slug] and len(titles[slug].split()) <= 4]
+    pool = sorted(short if len(short) >= count else eligible)
     if not pool:
         return []
     start = int(hashlib.sha256(seed.encode("utf-8")).hexdigest(), 16) % len(pool)
