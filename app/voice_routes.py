@@ -89,7 +89,7 @@ class VoiceService:
         return await run_in_threadpool(catalogue_vocabulary, self.guide.factory)
 
     async def answer(self, question: GuideQuestion) -> GuideVoiceAnswer:
-        response, evidence = await run_in_threadpool(self.guide.ask_with_evidence, question)
+        response, evidence = await run_in_threadpool(self.guide.converse, question)
         speech_status: Literal["ready", "disabled", "unavailable", "not_applicable"] = "not_applicable"
         audio = None
         if response.status == "answered":

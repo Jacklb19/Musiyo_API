@@ -17,6 +17,14 @@ from .guide_clarification import (
 )
 from .guide_config import GuideSettings
 from .guide_contracts import GuideCitation, GuideQuestion, GuideResponse
+from .guide_conversation import (
+    GREETING_PREFIX,
+    REDIRECT,
+    WELCOME,
+    split_courtesy,
+    suggestions,
+    topics_text,
+)
 from .guide_ollama import REQUEST_DEADLINE
 from .guide_providers import configured_embeddings, configured_generation
 from .guide_repository import Evidence, GuideRepository
@@ -33,6 +41,28 @@ class GuideService:
 
     def ask(self, question: GuideQuestion) -> GuideResponse:
         return self.ask_with_evidence(question)[0]
+
+    def converse(self, question: GuideQuestion) -> tuple[GuideResponse, list[Evidence]]:
+        """ask_with_evidence with manners: courtesy answered by the guide itself, and three current records
+        offered when the fichas cannot answer. The grounded answer itself is unchanged."""
+        greeted, core = split_courtesy(question.question)
+        if not core:
+            return self.offer(WELCOME, question.question), []
+        response, evidence = self.ask_with_evidence(question.model_copy(update={'question': core}))
+        if response.status == 'abstained':
+            return self.offer(REDIRECT, core), []
+        if response.status == 'answered' and greeted and response.answer:
+            response = response.model_copy(update={'answer': GREETING_PREFIX + response.answer})
+        return response, evidence
+
+    def offer(self, template: str, seed: str) -> GuideResponse:
+        with self.factory() as db:
+            titles = current_titles(db)
+        slugs = suggestions(titles, seed)
+        if not slugs:
+            return GuideResponse(schema_version=1, status='abstained', answer=None, citations=[], reason='insufficient_evidence')
+        return GuideResponse(schema_version=1, status='answered', answer=template.format(topics=topics_text(slugs, titles)),
+                             citations=[GuideCitation(element_slug=slug, title=titles[slug]) for slug in slugs], reason=None)
 
     def ask_with_evidence(self, question: GuideQuestion):
         evidence: list[Evidence] = []
