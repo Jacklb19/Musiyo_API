@@ -7,6 +7,8 @@ import base64
 import io
 import json
 import os
+import re
+import unicodedata
 import wave
 from collections.abc import Awaitable, Callable, Iterable
 from pathlib import Path
@@ -22,6 +24,21 @@ OUTPUT_RATES = (16000, 22050, 24000)
 # Generic Spanish question openings; they bias dictation without adding cultural content.
 QUESTION_FRAMES = ("qué es", "qué son", "quién es", "quiénes son", "cuál es", "cuáles son", "qué significa",
                    "qué significan", "cómo", "cuándo", "dónde", "por qué", "para qué", "cuántos", "cuántas")
+
+
+# What Whisper writes for a silent or near-silent take: video sign-offs and subtitle credits it learned
+# from the web. A transcript made only of one of them is not a visitor's question.
+SILENCE_PHRASES = re.compile(
+    r"(gracias por (ver|tu|su|vuestro) (el |este )?video|gracias por ver|subtitulos? (realizados? )?por .*"
+    r"|subtitulado por .*|suscribete( al canal)?|amara ?org.*|musica)( gracias)?")
+
+
+def silence_phrase(text: str) -> bool:
+    """True when the whole transcript is one of Whisper's silence phrases, ignoring case, accents and punctuation."""
+    plain = unicodedata.normalize("NFKD", text.lower())
+    plain = "".join(char for char in plain if not unicodedata.combining(char))
+    plain = " ".join(re.sub(r"[^a-z0-9 ]+", " ", plain).split())
+    return bool(SILENCE_PHRASES.fullmatch(plain))
 
 
 def vocabulary_terms(titles: Iterable[str]) -> list[str]:
@@ -193,6 +210,8 @@ class GroqTranscriber:
         text = result.get("text") if isinstance(result, dict) else None
         if not isinstance(text, str) or not 3 <= len(" ".join(text.split())) <= 500:
             raise ProviderUnavailable("Invalid transcription")
+        if silence_phrase(text):
+            raise ProviderUnavailable("Silent take")
         return " ".join(text.split())
 
 
