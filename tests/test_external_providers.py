@@ -279,3 +279,18 @@ def test_piper_speed_is_passed_as_length_scale():
     assert command[-2:] == ["--length_scale", "1.15"]
     with pytest.raises(ValidationError):
         VoiceSettings(synthesis="piper", piper_executable="p", piper_model="m", piper_length_scale=2.5)
+
+
+@pytest.mark.parametrize("text", ["Gracias por ver el video.", "¡Gracias por tu video!", "Subtítulos realizados por la comunidad de Amara.org",
+                                  "Suscríbete al canal", "Gracias por ver."])
+def test_groq_silence_phrases_are_not_questions(monkeypatch, key, text):
+    monkeypatch.setattr(voice_adapters, "post_multipart", lambda *args: {"text": text})
+    settings = VoiceSettings(transcription="groq", synthesis="disabled", groq_api_key_file=key)
+    with pytest.raises(ProviderUnavailable):
+        asyncio.run(GroqTranscriber(settings).transcribe(wav()))
+
+
+@pytest.mark.parametrize("text", ["Gracias por explicarme el bombo, ¿qué es el cacho?", "¿Por qué se ve el video del Castillo?",
+                                  "Hola, ¿me podrías explicar de qué trata el museo?"])
+def test_real_questions_are_kept(text):
+    assert not voice_adapters.silence_phrase(text)
