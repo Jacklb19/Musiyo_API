@@ -21,6 +21,9 @@ MARKERS = ("algunos", "algunas", "algun ", "segun", "describe", "descrit", "una 
            "se dice", "posiblemente", "probablemente", "distintas fuentes", "relato", "situa", "propone",
            "senala", "registra", "recoge", "en ocasiones")
 CHECKED_KINDS = {"documented_fact", "summary"}  # testimony/interpretation already get explicit notes
+# A pending status cannot be swapped for another qualifier: «sujetos a validación de la comunidad» must not
+# become «validados por la comunidad» just because the answer says «interpretaciones» (found 26/10/2026).
+STATUS = ("sujet", "pendient", "por documentar", "por validar", "sin validacion", "aun no", "todavia no")
 
 
 def markers(text: str) -> set[str]:
@@ -35,14 +38,16 @@ def sentences(text: str) -> list[str]:
 def lost_qualifications(question: str, answer: str, used: list["Evidence"]) -> list[str]:
     """Qualified sentences whose content the answer reuses (two or more shared content words
     beyond the question) while the answer carries no qualifier at all."""
-    if markers(answer):
-        return []
+    kept, folded = markers(answer), " " + fold(answer) + " "
     asked, said = terms(question), terms(answer)
     lost = []
     for item in used:
         if item.kind not in CHECKED_KINDS:
             continue
         for sentence in sentences(item.text):
-            if markers(sentence) and len((terms(sentence) & said) - asked) >= 2:
+            if len((terms(sentence) & said) - asked) < 2:
+                continue
+            status = {marker for marker in STATUS if marker in " " + fold(sentence) + " "}
+            if (status and not any(marker in folded for marker in status)) or (markers(sentence) and not kept):
                 lost.append(sentence)
     return lost

@@ -239,6 +239,18 @@ def test_lost_qualification_detection():
     assert not lost_qualifications("¿Qué es el relato?", "Es un relato sintético.", used)
 
 
+def test_pending_status_must_survive_the_answer():
+    from types import SimpleNamespace
+
+    from app.guide_hedges import lost_qualifications
+    used = [SimpleNamespace(fragment_id="f1", title="Créditos sintéticos", kind="summary", community=None, attribution=None,
+                            context=None, source_reference="Fuente sintética",
+                            text="Los contenidos sintéticos se basan en fuentes publicadas y están sujetos a validación de la comunidad.")]
+    question = "¿De qué trata el museo?"
+    assert lost_qualifications(question, "Presenta contenidos sintéticos validados por la comunidad, con interpretaciones plurales.", used)
+    assert not lost_qualifications(question, "Presenta contenidos sintéticos basados en fuentes, sujetos a validación de la comunidad.", used)
+
+
 @pytest.mark.parametrize("repaired", [True, False])
 def test_dropped_qualifier_gets_one_repair_then_falls_back(key, repaired):
     answers = ["La figura sintética trajo cantos de prueba al regresar.",
