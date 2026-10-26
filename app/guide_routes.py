@@ -51,4 +51,4 @@ def install_guide_routes(app, service: GuideService):
         if not limiter.accept(request.client.host if request.client else 'unknown'):
             raise HTTPException(429, GUIDE_RATE_LIMIT_MESSAGE, headers={"Retry-After": "60"})
         response.headers['Cache-Control'] = 'private, no-store'
-        return service.ask(body)
+        return service.converse(body)[0]

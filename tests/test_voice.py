@@ -134,12 +134,21 @@ def test_revocation_during_synthesis_removes_both_text_and_audio(guide):
     assert result["audio"] is None and result["speech_status"] == "not_applicable"
 
 
-def test_provider_disabled_and_no_evidence_never_synthesize(guide):
+def test_no_evidence_speaks_only_the_offer_and_disabled_never_synthesizes(guide):
+    # Owner 26/10/2026: without evidence the guide says so and offers current records, aloud; never a claim.
+    spoken = []
+    class Recording(SyntheticVoice):
+        async def synthesize(self, text):
+            spoken.append(text)
+            return await super().synthesize(text)
+    service = VoiceService(guide[2], VoiceSettings(synthesis="windows_sapi", windows_voice="Test"), synthesizer=Recording())
+    offered = asyncio.run(service.answer(question("Astronautas galácticos")))
+    assert offered.response.answer.startswith("Eso no lo encuentro en las fichas del museo, y prefiero no inventarlo.")
+    assert spoken == [offered.response.answer] and offered.response.citations
     class Uncalled(SyntheticVoice):
         async def synthesize(self, text):
-            pytest.fail("Unanswered questions must never be synthesized")
-    service = VoiceService(guide[2], VoiceSettings(synthesis="windows_sapi", windows_voice="Test"), synthesizer=Uncalled())
-    assert asyncio.run(service.answer(question("Astronautas galácticos"))).speech_status == "not_applicable"
+            pytest.fail("A disabled guide must never be synthesized")
+    service.synthesizer = Uncalled()
     disabled = GuideService(guide[1], settings=GuideSettings(generation="disabled"))
     service.guide = disabled
     assert asyncio.run(service.answer(question())).response.status == "provider_unavailable"
