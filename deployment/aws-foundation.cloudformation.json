@@ -4,12 +4,18 @@
   "Parameters": {
     "AmiId": {
       "Type": "AWS::EC2::Image::Id",
-      "Description": "Owner-approved Amazon Linux 2023 x86_64 AMI in us-east-1; resolve and record its exact id before deployment."
+      "Description": "Owner-approved Amazon Linux 2023 x86_64 AMI in the selected deployment Region; resolve and record its exact id before deployment."
     },
     "CloudFrontPrefixListId": {
       "Type": "String",
       "AllowedPattern": "pl-[a-f0-9]+",
-      "Description": "Managed CloudFront origin-facing prefix list in us-east-1, resolved before owner approval."
+      "Description": "Managed CloudFront origin-facing IPv4 prefix list in the selected deployment Region, resolved before owner approval."
+    },
+    "WebOrigin": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "(^$|^https://[a-z0-9][a-z0-9.-]+$)",
+      "Description": "Optional exact approved HTTPS web origin for private resource CORS; set after the distribution URL is known."
     }
   },
   "Resources": {
@@ -111,6 +117,40 @@
               "AbortIncompleteMultipartUpload": {
                 "DaysAfterInitiation": 1
               }
+            }
+          ]
+        },
+        "CorsConfiguration": {
+          "Fn::If": [
+            "HasWebOrigin",
+            {
+              "CorsRules": [
+                {
+                  "AllowedOrigins": [
+                    {
+                      "Ref": "WebOrigin"
+                    }
+                  ],
+                  "AllowedMethods": [
+                    "GET",
+                    "HEAD"
+                  ],
+                  "AllowedHeaders": [
+                    "Range",
+                    "If-None-Match",
+                    "If-Modified-Since"
+                  ],
+                  "ExposedHeaders": [
+                    "ETag",
+                    "Content-Length",
+                    "Content-Type"
+                  ],
+                  "MaxAge": 300
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
             }
           ]
         }
@@ -295,7 +335,17 @@
           }
         ],
         "UserData": {
-          "Fn::Base64": "#!/bin/bash\nset -eu\ndnf install -y docker\nsystemctl enable --now docker\ninstall -d -m 0750 /opt/musiyo\n"
+          "Fn::Base64": "#!/usr/bin/env bash\n# Host preparation only: no database migration, cultural import or secret values.\nset -euo pipefail\n\ndnf install -y docker curl ca-certificates\nsystemctl enable --now docker\ninstall -d -m 0750 /opt/musiyo /opt/musiyo/release /opt/musiyo/backups\ninstall -d -m 0700 -o 10001 -g 10001 /opt/musiyo/config /opt/musiyo/secrets\ninstall -d -m 0755 /usr/local/lib/docker/cli-plugins\n\ncompose_version=v2.40.3\ncompose_sha256=dba9d98e1ba5bfe11d88c99b9bd32fc4a0624a30fafe68eea34d61a3e42fd372\ncompose_file=$(mktemp)\ntrap 'rm -f \"$compose_file\"' EXIT\ncurl --fail --silent --show-error --location --retry 3 \\\n  \"https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-x86_64\" \\\n  --output \"$compose_file\"\nprintf '%s  %s\\n' \"$compose_sha256\" \"$compose_file\" | sha256sum --check --status\ninstall -m 0755 \"$compose_file\" /usr/local/lib/docker/cli-plugins/docker-compose\ntest \"$(docker compose version --short)\" = \"${compose_version#v}\"\n\ncat > /etc/systemd/system/musiyo.service <<'SERVICE'\n[Unit]\nDescription=Musiyo museum containers\nRequires=docker.service\nAfter=docker.service network-online.target\nWants=network-online.target\nConditionPathExists=/opt/musiyo/config/runtime.env\nConditionPathExists=/opt/musiyo/release/compose.demo.yml\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nWorkingDirectory=/opt/musiyo/release\nExecStartPre=/usr/bin/docker compose --env-file /opt/musiyo/config/runtime.env -f compose.demo.yml config --quiet\nExecStart=/usr/bin/docker compose --env-file /opt/musiyo/config/runtime.env -f compose.demo.yml up -d --no-build\nExecStop=/usr/bin/docker compose --env-file /opt/musiyo/config/runtime.env -f compose.demo.yml stop\nTimeoutStartSec=600\n\n[Install]\nWantedBy=multi-user.target\nSERVICE\nsystemctl daemon-reload\n# Enable recovery after a reboot, but do not start an unconfigured application.\nsystemctl enable musiyo.service\n"
+        }
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "One modest container host; role-based private reads and SSM avoid static AWS keys or SSH.",
+          "must": [
+            "Bootstrap never imports data, runs migrations or embeds secrets.",
+            "Retain the database disk; preserve IMDSv2 and bounded CPU credits.",
+            "Docker Compose binary must match its pinned SHA-256."
+          ]
         }
       }
     },
@@ -318,28 +368,150 @@
           "Ref": "Instance"
         }
       }
+    },
+    "ContentBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Require encrypted transport for retained private data.",
+          "must": [
+            "No public grant or runtime upload permission."
+          ]
+        }
+      },
+      "Properties": {
+        "Bucket": {
+          "Ref": "ContentBucket"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "DenyInsecureTransport",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ContentBucket",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${ContentBucket.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "BackupBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Require encrypted transport for retained private data.",
+          "must": [
+            "No public grant or runtime upload permission."
+          ]
+        }
+      },
+      "Properties": {
+        "Bucket": {
+          "Ref": "BackupBucket"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "DenyInsecureTransport",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "BackupBucket",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${BackupBucket.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
     "InstanceId": {
       "Value": {
         "Ref": "Instance"
-      }
+      },
+      "Description": "Approved container host identifier."
     },
     "PublicAddress": {
       "Value": {
         "Ref": "StaticAddress"
-      }
+      },
+      "Description": "Elastic IPv4 address for the owner-controlled API DNS name."
     },
     "ContentBucketName": {
       "Value": {
         "Ref": "ContentBucket"
-      }
+      },
+      "Description": "Private runtime-read content bucket."
     },
     "BackupBucketName": {
       "Value": {
         "Ref": "BackupBucket"
-      }
+      },
+      "Description": "Private backup bucket, separate from runtime reads."
+    }
+  },
+  "Conditions": {
+    "HasWebOrigin": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "WebOrigin"
+            },
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  "Metadata": {
+    "AWSToolsMetrics": {
+      "AWSAgentToolkit": "aws-cloudformation@3"
+    },
+    "com.aws.cloudformation.Context": {
+      "must": [
+        "Owner resource approval and verified Free-plan coverage before application; no own spend.",
+        "Regional resources stay in the selected Region; global endpoints do not change that selection.",
+        "Database ports remain private; HTTP ingress is only for Caddy ACME/HTTPS redirection."
+      ],
+      "ref": [
+        {
+          "at": "OPERATIONS.txt",
+          "has": "deployment, retention and restore boundaries"
+        }
+      ]
     }
   }
 }

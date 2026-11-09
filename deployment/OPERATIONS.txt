@@ -66,6 +66,9 @@ returned 23/23 responses identical to the reference and a matching resource hash
 
 AWS resource proposal and deployment prerequisites
 -------------------------------------------------
+For the reviewed Ohio/continuous-operation preparation, read AWS_RUNBOOK.txt.
+Its PostgreSQL 17 logical-restore ordering applies to an online database copy;
+the migrate-first example below is only for a new empty synthetic installation.
 Read aws-proposal.json and both CloudFormation resource lists (the Web template
 is in Musiyo_Web/deployment/static-site.cloudformation.json). The conservative
 40-hour scenario consumes about USD 10.59 in credits per month before allowances;

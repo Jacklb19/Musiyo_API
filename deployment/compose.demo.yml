@@ -1,7 +1,7 @@
 name: musiyo-demo
 services:
   postgres:
-    image: pgvector/pgvector:0.8.0-pg16
+    image: pgvector/pgvector:0.8.2-pg17@sha256:e04af45eb526378554a24ed05b37d9ea56fd623feca9adf264d4f47d875c9a93
     environment:
       POSTGRES_DB: musiyo
       POSTGRES_USER: musiyo
