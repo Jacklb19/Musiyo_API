@@ -2,7 +2,9 @@
 # Host preparation only: no database migration, cultural import or secret values.
 set -euo pipefail
 
-dnf install -y docker curl ca-certificates
+dnf install -y docker ca-certificates
+# Amazon Linux 2023 supplies curl-minimal; installing curl conflicts with it.
+command -v curl > /dev/null
 systemctl enable --now docker
 install -d -m 0750 /opt/musiyo /opt/musiyo/release /opt/musiyo/backups
 install -d -m 0700 -o 10001 -g 10001 /opt/musiyo/config /opt/musiyo/secrets

@@ -16,6 +16,13 @@ Se aplica solo a la infraestructura revisada y aprobada por el propietario, en
    por SHA-256 y el servicio systemd. No arranca una aplicación incompleta, no
    modifica esquemas ni importa recursos. Mantener `bootstrap-ec2.sh` idéntico al
    texto UserData incorporado en la plantilla al preparar una revisión.
+   Amazon Linux 2023 ya incluye curl-minimal: no instalar curl encima ni usar
+   --allowerasing para resolver ese conflicto. Comprobar command -v curl.
+   Si el arranque inicial falla antes de preparar Docker, revisar el error y
+   repetir por SSM solo el bootstrap corregido. Comprobar Compose y systemd;
+   cloud-init conserva su error histórico aunque la reparación sea correcta.
+   Cambiar UserData de una instancia existente puede detenerla/reiniciarla:
+   no aplicar ese cambio como parte de una actualización de CORS.
 4. Transferir una imagen API cerrada de la revisión aceptada y cargarla con Docker.
    Copiar los archivos de deployment, incluido compose.demo.yml y Caddyfile, a
    `/opt/musiyo/release`. Configurar `MUSIYO_API_IMAGE` con la etiqueta cargada;
