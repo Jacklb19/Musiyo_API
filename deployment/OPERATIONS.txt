@@ -75,7 +75,7 @@ this is not a promise of permanent free hosting or demonstrated capacity.
    expiration and coverage for EC2/EBS, Elastic IP, S3 and CloudFront/function/IAM.
    Do not enroll in a CloudFront flat-rate plan: its eligibility differs from the
    AWS Free account plan. Remain local if a required service is unavailable.
-2. Owner resolves an exact Amazon Linux 2023 x86_64 AMI and the us-east-1 managed
+2. Owner resolves an exact Amazon Linux 2023 x86_64 AMI and the us-east-2 managed
    CloudFront origin-facing prefix list. Record both in the resource approval.
    Review retaining EBS/buckets/instance and the ongoing Elastic IP credit cost.
 3. Owner supplies an existing controlled API DNS hostname. No domain purchase,
@@ -106,13 +106,18 @@ this is not a promise of permanent free hosting or demonstrated capacity.
 Instance sessions
 -----------------
 Prepare an EXTERNAL approval JSON containing owner_approved=true, responsible,
-own_spend_limit_usd=0, eligible_services_verified=true, account_id, region=us-east-1,
+own_spend_limit_usd=0, eligible_services_verified=true, account_id, region=us-east-2,
 instance_type=t3.small, instance_id and minimum_remaining_credits_usd=20. This
 records an actual owner decision; do not manufacture it from this proposal.
 
-python -m scripts.aws_demo status --approval <external-approval.json>
-python -m scripts.aws_demo start --approval <external-approval.json>
-python -m scripts.aws_demo stop --approval <external-approval.json>
+python -m scripts.aws_demo status --profile musiyo --approval <external-approval.json>
+python -m scripts.aws_demo start --profile musiyo --approval <external-approval.json>
+python -m scripts.aws_demo stop --profile musiyo --approval <external-approval.json>
+
+Always choose the owner-authorized named profile explicitly; the operator never
+falls back to default credentials. This regional preparation creates no resources
+and does not authorize an instance transition. CloudFront/Agent Toolkit global
+endpoints in us-east-1 do not change the regional resource selection us-east-2.
 
 Start checks the actual account plan and credit balance, SDK account identity,
 instance type and project tag. It refuses Paid, expired or unknown states. Stop

@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.db import make_session_factory
 from app.main import create_app
 from app.migrations import upgrade_database
-from scripts.aws_demo import require_free_plan
+from scripts.aws_demo import approved_configuration, require_free_plan
 from scripts.demo import external_path
 
 
@@ -30,6 +30,21 @@ def test_backups_and_environment_files_cannot_be_created_in_repository():
     root = Path(__file__).resolve().parents[1]
     with pytest.raises(ValueError):
         external_path(str(root / 'private.env'))
+
+
+def test_instance_approval_requires_ohio_and_concrete_owner_coverage(tmp_path):
+    approval = dict(owner_approved=True, own_spend_limit_usd=0, region='us-east-2',
+                    instance_type='t3.small', account_id='123456789012',
+                    instance_id='i-0123456789abcdef0', eligible_services_verified=True,
+                    responsible='Test owner')
+    path = tmp_path / 'approval.json'
+    path.write_text(json.dumps(approval), encoding='utf-8')
+    assert approved_configuration(path) == approval
+    for patch in ({'region': 'us-east-1'}, {'owner_approved': False},
+                  {'own_spend_limit_usd': 1}, {'eligible_services_verified': False}):
+        path.write_text(json.dumps(approval | patch), encoding='utf-8')
+        with pytest.raises(ValueError):
+            approved_configuration(path)
 
 
 def test_readiness_checks_schema_without_migrating_at_startup(tmp_path):

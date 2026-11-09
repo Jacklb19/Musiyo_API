@@ -25,7 +25,7 @@ def approved_configuration(path):
     value = json.loads(Path(path).read_text(encoding='utf-8'))
     if value.get('owner_approved') is not True or value.get('own_spend_limit_usd') != 0:
         raise ValueError('Concrete resources and coverage must be approved by the owner first')
-    if value.get('region') != 'us-east-1' or value.get('instance_type') != 't3.small':
+    if value.get('region') != 'us-east-2' or value.get('instance_type') != 't3.small':
         raise ValueError('Resource configuration differs from the demonstration proposal')
     import re
     if not re.fullmatch(r'[0-9]{12}', value.get('account_id', '')) or not re.fullmatch(r'i-[a-f0-9]{8,17}', value.get('instance_id', '')):
@@ -39,9 +39,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=['status', 'start', 'stop'])
     parser.add_argument('--approval', required=True, help='External owner approval JSON')
+    parser.add_argument('--profile', required=True, help='Explicit owner-authorized AWS CLI profile')
     args = parser.parse_args()
     approval = approved_configuration(args.approval)
-    session = boto3.Session(region_name=approval['region'])
+    session = boto3.Session(profile_name=args.profile, region_name=approval['region'])
     config = Config(connect_timeout=5, read_timeout=10, retries={'max_attempts': 1})
     identity = session.client('sts', config=config).get_caller_identity()
     if identity['Account'] != approval['account_id']:

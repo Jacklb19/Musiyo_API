@@ -2,7 +2,7 @@
   "schema_version": 1,
   "date": "2026-10-15",
   "state": "not_provisioned",
-  "region": "us-east-1",
+  "region": "us-east-2",
   "own_spend_limit_usd": 0,
   "plan": "FREE only, when eligible; no Paid upgrade and no unsupported service activation",
   "account_preconditions": [
