@@ -1,0 +1,107 @@
+# Preparación y operación en AWS
+
+Este procedimiento no constituye aprobación de recursos ni una orden de migración.
+Se aplica solo a la infraestructura revisada y aprobada por el propietario, en
+`us-east-2`, con el perfil temporal explícito del operador. No cambiar a Paid.
+
+## Preparar el destino
+
+1. Resolver y registrar una AMI Amazon Linux 2023 x86_64 y el prefix list regional
+   `com.amazonaws.global.cloudfront.origin-facing`. Revisar cuotas, Free plan,
+   cobertura, saldo, vencimiento y consumos compartidos antes de aplicar.
+2. Validar las dos plantillas, sus políticas y el conjunto de cambios. Los buckets
+   son privados, versionados y cifrados; sus políticas deniegan HTTP. El rol de la
+   instancia solo lee el contenido y permite SSM; no escribe respaldos ni invoca IA.
+3. `aws-foundation.cloudformation.json` instala Docker, Compose v2.40.3 verificado
+   por SHA-256 y el servicio systemd. No arranca una aplicación incompleta, no
+   modifica esquemas ni importa recursos. Mantener `bootstrap-ec2.sh` idéntico al
+   texto UserData incorporado en la plantilla al preparar una revisión.
+   Amazon Linux 2023 ya incluye curl-minimal: no instalar curl encima ni usar
+   --allowerasing para resolver ese conflicto. Comprobar command -v curl.
+   Si el arranque inicial falla antes de preparar Docker, revisar el error y
+   repetir por SSM solo el bootstrap corregido. Comprobar Compose y systemd;
+   cloud-init conserva su error histórico aunque la reparación sea correcta.
+   Cambiar UserData de una instancia existente puede detenerla/reiniciarla:
+   no aplicar ese cambio como parte de una actualización de CORS.
+4. Transferir una imagen API cerrada de la revisión aceptada y cargarla con Docker.
+   Copiar los archivos de deployment, incluido compose.demo.yml y Caddyfile, a
+   `/opt/musiyo/release`. Configurar `MUSIYO_API_IMAGE` con la etiqueta cargada;
+   systemd usa `up -d --no-build`, sin construir código inesperado al reiniciar.
+5. El propietario introduce los secretos por un canal autorizado. El archivo
+   `/opt/musiyo/config/runtime.env` debe ser de root con modo 0600. Los archivos
+   de configuración/secretos que lee la API necesitan UID/GID 10001 y modo 0400
+   o 0600; sus carpetas tienen modo 0700. No ponerlos en UserData, S3 estático,
+   Git, capturas, logs ni variables VITE_. No mostrar `docker compose config`
+   sin `--quiet`, porque expande valores confidenciales.
+
+## Base y recursos
+
+La imagen propuesta de PostgreSQL 17/pgvector 0.8.2 está fijada por digest Linux
+x64. No conectar un directorio de PostgreSQL 16 a esa imagen. Una instalación
+existente de otro major requiere un destino y un volumen nuevos y restauración
+lógica; nunca sustituir su volumen en el lugar.
+
+Para migrar la base oficial, conservar un volcado reciente y sus objetos
+autorizados, verificarlo y ensayar antes en un destino nuevo. `online_backup
+restore` exige una base vacía. **No ejecutar migraciones que creen tablas antes
+de restaurar ese volcado.** Después comparar `alembic current` y la revisión
+requerida; cualquier migración adicional es una operación separada y revisada.
+
+No usar transfer_museum desde una base local para reemplazar la base oficial.
+La copia PostgreSQL conserva validadores, fichas, procedencia, restricciones,
+revocaciones, encuesta e índice. Los objetos se seleccionan mediante un
+manifiesto contrastado con la copia, con SHA-256, tamaño y MIME. Encontrar una
+carpeta no autoriza importarla ni cargarla. No sobrescribir objetos diferentes.
+
+En EC2 usar `MUSIYO_STORAGE_BACKEND=s3`, bucket y región aprobados, sin claves
+estáticas ni endpoint personalizado. El runtime no tiene permisos de carga.
+Los respaldos van al bucket separado usando la identidad temporal del operador.
+Conservar además una copia verificada fuera de AWS antes del agotamiento/cierre.
+
+## HTTPS, origen e IP
+
+El propietario apunta el nombre de API aprobado a la Elastic IP aprobada. Caddy
+obtiene el certificado mediante HTTP/ACME; 80 queda abierto con ese propósito y
+redirección HTTPS. 443 solo admite el prefix list de CloudFront. No exponer SSH,
+8000 ni PostgreSQL. Las comprobaciones del origen se hacen por SSM/loopback o
+CloudFront, sin ampliar el security group para probarlo.
+
+Configurar `MUSIYO_TRUSTED_PROXY_CIDRS` con las entradas verificadas del prefix
+list. Caddy procesa X-Forwarded-For de derecha a izquierda y entrega a la API la
+IP verificada del cliente. Contrastar el resultado con una petición controlada.
+
+La web usa el HTTPS generado de CloudFront. Una vez conocido y aprobado ese
+origen exacto, actualizar el parámetro WebOrigin de foundation mediante un
+conjunto de cambios: solo permite GET/HEAD de recursos privados desde ese origen.
+Configurar también `MUSIYO_WEB_ORIGIN` con esa misma URL, sin barra final.
+La API de sesión no se cachea y conserva cookies, Origin y X-CSRF-Token.
+
+## Arranque y tráfico
+
+Antes de `systemctl start musiyo`, comprobar `docker compose --env-file
+/opt/musiyo/config/runtime.env -f /opt/musiyo/release/compose.demo.yml config
+--quiet`, la imagen cargada y los permisos. `start` no migra automáticamente.
+Comprobar estado, contenedores, certificado y `/api/v1/ready` antes de tráfico.
+
+Los instalables deben llevar el hostname CloudFront definitivo; WebGL toma el
+origen de su página. No compilar instalables con nombres provisionales. Solo
+publicar enlaces a ZIP/APK cargados y verificados. Preparar la web con su WebGL
+cerrado y `deployment:prepare`, conservando MIME, compresión y caché por archivo.
+
+La copia de ensayo no reemplaza la copia final: acordar una ventana para evitar
+escrituras divergentes, obtener/verificar el estado final y decidir el destino
+del sitio/API anteriores. Un push a main puede activar Render/Vercel: requiere
+aviso y acuerdo antes de ejecutarlo. No dejar dos bases aceptando correcciones
+independientes durante el cambio de tráfico.
+
+## Reversión y cierre
+
+Conservar manifiestos estáticos, versiones de objetos y la configuración anterior.
+Si hay nuevas escrituras en AWS, respaldarlas y reconciliarlas antes de volver al
+destino anterior; una reversión de URLs no sincroniza bases. No vaciar Supabase.
+
+Detener EC2 no detiene costos de disco, IPv4, S3 ni tráfico. Los recursos Retain
+requieren revisión manual al cerrar: no usar delete-stack como sustituto de un
+plan de recuperación/cierre, porque puede dejar datos retenidos y dependencias
+pendientes. No liberar la IP ni borrar volúmenes/buckets hasta verificar la copia
+externa y la decisión concreta del propietario.

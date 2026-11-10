@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "date": "2026-10-15",
-  "state": "not_provisioned",
-  "region": "us-east-1",
+  "state": "prepared_not_approved_or_provisioned",
+  "region": "us-east-2",
   "own_spend_limit_usd": 0,
   "plan": "FREE only, when eligible; no Paid upgrade and no unsupported service activation",
   "account_preconditions": [
-    "Owner creates the eligible account and verifies the actual Free plan, expiration, remaining credits and service coverage.",
+    "Verify actual Free plan ACTIVE status, expiration, remaining credits, eligible services and other project consumption immediately before application.",
     "Owner approves the concrete CloudFormation resource list and domain before deployment.",
     "Remain local if eligibility or coverage is unavailable."
   ],
@@ -17,7 +17,8 @@
       "vcpus": 2,
       "memory_gib": 2,
       "cpu_credits": "standard",
-      "monthly_hours": 40
+      "monthly_hours": 730,
+      "planned_months": 2
     },
     "ebs": {
       "type": "gp3",
@@ -52,47 +53,56 @@
       "AWS Organizations",
       "Control Tower",
       "paid-only services"
-    ]
+    ],
+    "database": {
+      "engine": "PostgreSQL 17",
+      "extension": "pgvector 0.8.2",
+      "image": "pgvector/pgvector:0.8.2-pg17@sha256:e04af45eb526378554a24ed05b37d9ea56fd623feca9adf264d4f47d875c9a93",
+      "public_ports": false,
+      "restore": "New empty database, verified logical dump, matching schema revision"
+    }
   },
   "rates_usd": {
-    "ec2_per_hour": 0.0209,
+    "ec2_per_hour": 0.0208,
     "gp3_per_gb_month": 0.08,
     "public_ipv4_per_hour": 0.005,
-    "s3_per_gb_month_planning_allowance": 0.03,
+    "s3_per_gb_month_planning_allowance": 0.023,
     "cdn_per_gb_planning_allowance": 0.12,
-    "requests_and_backup_allowance": 1.0
+    "requests_and_backup_allowance": 1.0,
+    "verified_fixed_rate_effective_date": "2026-11-01",
+    "rate_region": "us-east-2"
   },
   "estimate": {
-    "ec2": 0.836,
+    "ec2": 15.184,
     "ebs": 2.4,
     "ipv4": 3.65,
-    "s3": 0.3,
+    "s3": 0.23,
     "cdn_allowance": 1.92,
     "requests_allowance": 1.0,
-    "total_credits_per_month_planning": 10.586,
-    "six_months_credits_planning": 63.516,
+    "private_content_transfer_allowance": 0.48,
+    "total_credits_per_month_planning": 24.864,
+    "two_months_credits_planning": 49.728,
     "own_spend_usd": 0,
-    "notes": "Conservative usage scenario before free allowances; S3/CDN/request lines are planning allowances, not quoted tariffs. Traffic is 16 GB CDN plus 4 GB direct private content. Shared credit consumption and actual account eligibility still require verification.",
-    "private_content_transfer_allowance": 0.48
+    "notes": "Continuous two-month planning scenario, 730 hours/month, before free allowances. Fixed Ohio rates verified using AWS Price List. S3 assumes 10 GB including versions/backups; CDN 16 GB plus 4 GB direct private transfer. CDN/request figures remain planning allowances, not a usage cap or forecast. Add other account workloads and keep the USD 20 reserve. No Paid upgrade or additional credit awards assumed."
   },
   "stop_behavior": "Compute stops; retained EBS, Elastic IP, stored object versions and CDN traffic continue consuming eligible credits.",
   "expiry_policy": "Export and verify local database/files before credit depletion or account closure. Free account closure can remove access to resources/data; retain at least two local copies.",
   "models": {
     "default_embeddings": "local-hash-v1, 1024 dimensions; deterministic lexical baseline",
-    "default_generation": "local extractive quotations",
+    "default_generation": "Owner-selected Groq server configuration may provide conversation; local extractive fallback. IaC enables no provider by itself.",
     "selected_local_trial": {
       "runtime": "Ollama, local-only mode",
       "embedding_model": "qwen3-embedding:0.6b, 1024 dimensions; installed digest pinned in external configuration",
       "generation_model": "qwen3:4b, Q4_K_M; installed following explicit owner authorization; evaluation pending acceptance",
       "host": "Owner Windows PC with RTX 4060 Laptop 8 GiB; not the proposed t3.small API host",
-      "state": "Embedding fingerprint unchanged; 4B complete and under local quality evaluation. Rejected 0.6B remains inactive. Public operation remains lexical/extractive.",
+      "state": "Historical PC-only experiment; not selected for this AWS deployment and no AWS-to-PC model connection is proposed.",
       "networking": "Native API and model remain on the PC during local development. Any AWS-to-PC connectivity requires a concrete secure delivery design and owner approval; no public model port.",
       "availability": "Requires inference PC awake and reachable. This is not continuous hosting.",
       "small_model_trial": "qwen3:0.6b installed only for evaluation; not activated as visitor guide"
     },
     "prerecorded_narration": "ElevenLabs Studio, exported audio files; provider upload and quotas must be handled separately",
-    "dynamic_voice": "Future backend ElevenLabs Text-to-Speech API, not Studio projects; processing permission and quota coverage pending",
-    "external_processing": "No cloud model invocation enabled. Cultural evidence and questions stay local. New model downloads require explicit owner authorization. Instance role has no AI invocation permission."
+    "dynamic_voice": "Owner-selected Groq transcription and ElevenLabs TTS configuration, with pinned local Piper fallback. Processing consent and provider quotas must be retained; no client-side keys.",
+    "external_processing": "External processing requires owner-selected server-only configuration and consent. Runtime IAM has no AWS AI invocation permission. No provider account, key or quota is inferred from connected sessions."
   },
   "sources": {
     "free_plan": "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html",
@@ -118,5 +128,6 @@
     "planning_ceiling_usd": 80,
     "additional_credit_awards_assumed": false,
     "rule": "Remain on Free plan. Do not upgrade or activate uncovered services. A budget alert is not a spending cap. Verify account-wide consumption, including retained storage/IP and other projects, before each session and export before expiry."
-  }
+  },
+  "reviewed_date": "2026-11-09"
 }

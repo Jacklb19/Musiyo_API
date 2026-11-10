@@ -1,7 +1,7 @@
 name: musiyo-demo
 services:
   postgres:
-    image: pgvector/pgvector:0.8.0-pg16
+    image: pgvector/pgvector:0.8.2-pg17@sha256:e04af45eb526378554a24ed05b37d9ea56fd623feca9adf264d4f47d875c9a93
     environment:
       POSTGRES_DB: musiyo
       POSTGRES_USER: musiyo
@@ -34,7 +34,7 @@ services:
       # Validator self-registration opens only when this secret file holds an invitation code (12+ characters).
       MUSIYO_VALIDATOR_INVITATION_FILE: /run/secrets/musiyo/validator-invitation.txt
       MUSIYO_S3_BUCKET: ${MUSIYO_S3_BUCKET:-}
-      MUSIYO_S3_REGION: ${MUSIYO_S3_REGION:-us-east-1}
+      MUSIYO_S3_REGION: ${MUSIYO_S3_REGION:-us-east-2}
       MUSIYO_S3_ENDPOINT: ${MUSIYO_S3_ENDPOINT:-}
       AWS_EC2_METADATA_SERVICE_ENDPOINT: ${MUSIYO_METADATA_ENDPOINT:-http://169.254.169.254}
       FORWARDED_ALLOW_IPS: "*"
